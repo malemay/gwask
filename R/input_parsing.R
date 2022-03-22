@@ -1,7 +1,57 @@
-# A function that takes a data.frame returned by the add_pvalues function
-# and returns a standard data.frame for Manhattan plotting
-format_kmer_gwas <- function(sam_df) {
+#' Format k-mer GWAS results for generating Manhattan plots
+#'
+#' This function takes a data.frame returned by the add_pvalues function
+#' and returns a standard data.frame for Manhattan plotting
+#'
+#' @param sam_df A data.frame of k-mer matches to alignments annotated
+#'   with p-values, as returned by the function add_pvalues
+#' @param fai_file A character of length one. A .fai index file that
+#'   will be queried with the \code{\link{parse_fai}} function to
+#'   query information about the reference genome and translate
+#'   positions on specific input sequences to positions along the
+#'   whole reference.
+#' @param pattern A character of length one. A regular expression
+#'   used to match the name of the chromosome or scaffolds in the
+#'   .fai index file. Matching sequences will be kept. If NULL
+#'   (the default), all sequences are kept.
+#'
+#' @return A data.frame that contains the following standard columns
+#'   and can be used for generating a Manhattan plot using the 
+#'   function manhattan_plot.
+#'   \itemize{
+#'     \item manhattan_chrom Character. The name of the chromosome
+#'     \item manhattan_rpos  Numeric. The position along the chromsome
+#'       expressed as a cumulative position along the reference
+#'     \item manhattan_cpos Numeric. The position on the reference
+#'       expressed in terms of position along a particular chromosome
+#'     \item mahattan_log10p The p-value used for plotting, obtained by
+#'       computing -log10 of the p-value.
+#'     \item manhattan_even Logical. \code{TRUE} if the chromosome should be
+#'       considered even-valued, \code{FALSE} otherwise. Used to
+#'       distinguish the chromosome that are next to each other by color.
+#'   }
+#'
+#'   These data columns are guaranted to be the first ones, in that order,
+#'   in the output data.frame. Any other columns that were present in the
+#'   input are appended to the output data.frame as is.
+#' @examples
+#' NULL
+format_kmer_gwas <- function(sam_df, fai_file, pattern = NULL) {
+	fai_info <- parse_fai(fai_file, pattern)
 
+	sam_df <- sam_df[grepl(pattern, sam_df$RNAME), ]
+
+	# Creating the data.frame containing the new (standard) columns
+	output_df <- data.frame(manhattan_chrom = sam_df$RNAME,
+				stringsAsFactors = FALSE)
+
+	# Getting the plotting position from the reference name and position
+	output_df$manhattan_rpos   <- fai_info$start[output_df$manhattan_chrom] + sam_df$ref_pos
+	output_df$manhattan_cpos   <- sam_df$ref_pos
+	output_df$manhattan_log10p <- -log10(sam_df$pvalue)
+	output_df$manhattan_even   <- as.integer(factor(output_df$manhattan_chrom, levels = names(fai_info$start))) %% 2 == 0
+
+	return(cbind(output_df, sam_df))
 }
 
 #' Parse a .fai fasta index file

@@ -2,15 +2,8 @@
 # sam_df: A sam-like data.frame of reads to which significant k-mers matched, as returned by the function add_pvalues
 # fai_file: A .fai index file that is used to read chromosome sizes from
 # pattern: a regular expression used to restrict the chromosomes that will be displayed on the Manhattan plot
-kmer_manhattan <- function(sam_df, fai_file, pattern = NULL, signals = NULL) {
+kmer_manhattan <- function(formatted_df, fai_file, pattern = NULL, signals = NULL) {
 	fai_info <- parse_fai(fai_file, pattern)
-
-	# Filtering sam_df be removing records that don't match pattern
-	sam_df <- sam_df[grepl(pattern, sam_df$RNAME), ]
-
-	# Getting the plotting position from the reference name and position
-	sam_df$plot_pos <- fai_info$start[sam_df$RNAME] + sam_df$ref_pos
-	sam_df$log10_p <- -log10(sam_df$pvalue)
 
 	if(!is.null(signals) && nrow(signals)) {
 		signals$first_plot <- fai_info$start[signals$first_chrom] + signals$first_pos
@@ -20,7 +13,7 @@ kmer_manhattan <- function(sam_df, fai_file, pattern = NULL, signals = NULL) {
 
 	# Plotting the results
 	output <- ggplot2::ggplot(sam_df) +
-		ggplot2::geom_point(mapping = ggplot2::aes(x = plot_pos, y = log10_p, color = MAPQ)) +
+		ggplot2::geom_point(mapping = ggplot2::aes(x = manhattan_rpos, y = manhattan_log10p, color = MAPQ)) +
 		ggplot2::scale_x_continuous(name = "Chromosome",
 					    breaks = fai_info$label_pos, 
 					    labels = names(fai_info$start),
@@ -31,7 +24,7 @@ kmer_manhattan <- function(sam_df, fai_file, pattern = NULL, signals = NULL) {
 	if(!is.null(signals) && nrow(signals)) {
 		output <- output + ggplot2::geom_vline(data = signals, aes(xintercept = max_plot))
 		output <- output + ggplot2::geom_rect(data = signals,
-						      ymin = 0, ymax = max(sam_df$log10_p),
+						      ymin = 0, ymax = max(sam_df$manhattan_log10p),
 						      aes(xmin = first_plot, xmax = last_plot),
 						      color = "red", alpha = 0.4)
 	}
