@@ -1,0 +1,4 @@
+export("add_pvalues", "extract_reads", "filter_sam_df",
+       "format_kmer_gwas", "gapit_manhattan", "get_samples",
+       "kmer_manhattan", "make_sampath_df", "parse_fai",
+       "parse_sam_data", "read_gapit", "read_sam", "revcomp")
