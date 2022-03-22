@@ -1,6 +1,20 @@
 # A function to extract the reads containing a given k-mer
 # and its reverse complement from bam files
 
+#' extract_reads
+#'
+#' To be completed
+#'
+#' @param kmer_sequence To be completed
+#' @param bam_file To be completed
+#' @param samtools_path To be completed
+#' @param output To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 extract_reads <- function(kmer_sequence, bam_file, samtools_path, output) {
 	# First extracting the reads with the kmer sequence in the forward orientation
 	command <- paste0(samtools_path, " view ", bam_file, " | grep ", kmer_sequence, " > forward_", output)
@@ -15,7 +29,17 @@ extract_reads <- function(kmer_sequence, bam_file, samtools_path, output) {
 }
 
 
-
+#' revcomp
+#'
+#' To be completed
+#'
+#' @param sequence To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 revcomp <- function(sequence) {
 
 	# Checking that only one sequence is provided
@@ -44,6 +68,20 @@ revcomp <- function(sequence) {
 # index: the index of the k-mer in kmer_list to extract
 # 
 # Return value: a list, with the first element being the kmer sequence and the second being a character vector of samples
+
+#' get_samples
+#'
+#' To be completed
+#'
+#' @param pav_table To be completed
+#' @param kmer_list To be completed
+#' @param index To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 get_samples <- function(pav_table, kmer_list, index) {
 	# First reading the PAV matrix and line names from pav_table
 	# We need to read the sample names separately because they might get modified if we store them as column names
@@ -75,6 +113,18 @@ get_samples <- function(pav_table, kmer_list, index) {
 # and returns a data.frame containing the data
 # Optional fields are stripped from the input
 # filename: the psuedo-sam file to use as input
+
+#' read_sam
+#'
+#' To be completed
+#'
+#' @param filename To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 read_sam <- function(filename) {
 
 	# Handling the case where the file was empty
@@ -109,6 +159,18 @@ read_sam <- function(filename) {
 
 # A function that takes the paths to a set of sam files and returns a data.frame with
 # metadata about these files
+
+#' make_sampath_df
+#'
+#' To be completed
+#'
+#' @param paths To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 make_sampath_df <- function(paths) {
 	output = data.frame(path = paths,
 			    kmer = sub("kmer_([ATGC]{31})_[0-9]+/.*", "\\1", paths),
@@ -121,6 +183,18 @@ make_sampath_df <- function(paths) {
 # A function that takes a data.frame generated from the make_sampath_df function,
 # reads the sam files, and returns a data.frame suitable for generating a Manhattan plot-like
 # figure for the analysis of kmers with GWAS
+
+#' parse_sam_data
+#'
+#' To be completed
+#'
+#' @param sam_paths To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 parse_sam_data <- function(sam_paths) {
 	# Initializing a list that we will use to store the data.frames generated from each sam file
 	sam_list <- list()
@@ -201,6 +275,18 @@ parse_sam_data <- function(sam_paths) {
 # it be finding the start position of the k-mers on the reference and keeping only
 # unique positions. By default, it keeps the read with the highest MAPQ among
 # all the ones with the same mapping position
+
+#' filter_sam_df
+#'
+#' To be completed
+#'
+#' @param sam_df To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 filter_sam_df <- function(sam_df) {
 	# We use the sequence of the k-mer as it matched on the read to find its position in the reference
 	# This should normalize the position for all reads containing the same k-mer
@@ -228,6 +314,19 @@ filter_sam_df <- function(sam_df) {
 }
 
 # A function that adds p-values from the pvalue-sorted file of GWAS results to the input data.frame
+
+#' add_pvalues
+#'
+#' To be completed
+#'
+#' @param sam_df To be completed
+#' @param input To be completed
+#'
+#' @return To be completed
+#'
+#' @export
+#' @examples
+#' NULL
 add_pvalues <- function(sam_df, input) {
 	# Reading the input file
 	pvalues <- read.table(input, header = FALSE, stringsAsFactors = FALSE)
