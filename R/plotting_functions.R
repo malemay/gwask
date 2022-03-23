@@ -37,6 +37,8 @@
 #'   be used to plot each chromosome in a separate panel.
 #' @param threshold Numeric. A single value indicating where the -log10(p-value)
 #'   threshold line should be plotted.
+#' @param min_log10p Numeric. The minimum -log10(p-value) to display on the plot
+#'   can be used to filter out some non-significant markers for plotting speedup.
 #'
 #' @return A ggplot object describing a Manhattan plot with the specified parameters.
 #'
@@ -45,7 +47,7 @@
 #' NULL
 manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 			   signals = NULL, extent = FALSE, single_panel = TRUE,
-			   threshold = 5) {
+			   threshold = 5, min_log10p = 0) {
 
 	# Sanity checks -------------------------------------
 
@@ -86,6 +88,11 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 		signals$max_plot <- fai_info$start[signals$max_chrom] + signals$max_pos
 		# For compatibility with facet_wrap when extent = TRUE
 		signals$manhattan_chrom <- signals$first_chrom
+	}
+
+	# Removing the associations that are less significant than min_log10p
+	if(min_log10p > 0) {
+		formatted_data <- formatted_data[formatted_data$manhattan_log10p >= min_log10p, ]
 	}
 
 	# If single_panel is TRUE, then all the data is plotted along a single axis

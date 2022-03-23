@@ -12,7 +12,8 @@ manhattan_plot(
   signals = NULL,
   extent = FALSE,
   single_panel = TRUE,
-  threshold = 5
+  threshold = 5,
+  min_log10p = 0
 )
 }
 \arguments{
@@ -60,6 +61,9 @@ be used to plot each chromosome in a separate panel.}
 
 \item{threshold}{Numeric. A single value indicating where the -log10(p-value)
 threshold line should be plotted.}
+
+\item{min_log10p}{Numeric. The minimum -log10(p-value) to display on the plot
+can be used to filter out some non-significant markers for plotting speedup.}
 }
 \value{
 A ggplot object describing a Manhattan plot with the specified parameters.
