@@ -189,5 +189,3 @@ format_gapit_gwas <- function(gapit_df, fai_file, chromosomes, pattern = NULL) {
 	return(cbind(output_df, gapit_df))
 }
 
-# A function that takes a data.frame of GWAS results and returns a data.frame of signals that were found
-
