@@ -39,6 +39,8 @@
 #'   threshold line should be plotted.
 #' @param min_log10p Numeric. The minimum -log10(p-value) to display on the plot
 #'   can be used to filter out some non-significant markers for plotting speedup.
+#' @param plot_mapq Logical. Whether to plot the mapping quality (MAPQ) as the
+#'   color aesthetic (when provided as k-mers data).
 #'
 #' @return A ggplot object describing a Manhattan plot with the specified parameters.
 #'
@@ -47,7 +49,7 @@
 #' NULL
 manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 			   signals = NULL, extent = FALSE, single_panel = TRUE,
-			   threshold = 5, min_log10p = 0) {
+			   threshold = NULL, min_log10p = 0, plot_mapq = FALSE) {
 
 	# Sanity checks -------------------------------------
 
@@ -76,6 +78,12 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 		stop("extent can only be TRUE if signals is not NULL")	
 	}
 
+	# Check that mapq is only TRUE if the MAPQ column actually exists
+	if(plot_mapq && ! "MAPQ" %in% colnames(formatted_data)) {
+		warning("plot_mapq = TRUE but \"MAPQ\" is not among the columns. Setting plot_mapq to FALSE")
+		plot_mapq <- FALSE
+	}
+
 	# End of sanity checks ------------------------------
 
 	# Parsing the .fai index file to extract information about the reference sequences
@@ -100,14 +108,12 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 		output <- ggplot2::ggplot(formatted_data) +
 			ggplot2::geom_point(mapping = ggplot2::aes_string(x = "manhattan_rpos",
 									  y = "manhattan_log10p",
-									  color = ifelse(gwas_type == "gapit",
-											 "manhattan_even",
-											 "MAPQ"))) +
+									  color = ifelse(plot_mapq, "MAPQ", "manhattan_even"))) +
 				ggplot2::scale_x_continuous(name = "Chromosome",
 							    breaks = fai_info$label_pos,
-							    labels = names(fai_info$start)) +
+							    labels = names(fai_info$start),
+							    limits = c(0, sum(fai_info$lengths))) +
 				ggplot2::ylab("-log10(p-value)") +
-				ggplot2::geom_hline(yintercept = threshold) +
 				ggplot2::theme_bw() +
 				ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
 
@@ -120,7 +126,6 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 			ggplot2::facet_wrap(~manhattan_chrom, ncol = 5) +
 			ggplot2::scale_x_continuous(name = "Position (bp)") +
 			ggplot2::ylab("-log10(p-value)") +
-			ggplot2::geom_hline(yintercept = threshold, linetype = 2) +
 			ggplot2::theme_bw() +
 			ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
 	}
@@ -135,6 +140,12 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 							      color = "red", alpha = 0.4)
 		}
 	}
+
+	# Unless plot_mapq is TRUE, we do not need the color scale
+	if(!plot_mapq) output <- output + ggplot2::guides(color = "none")
+
+	# Also adding the threshold if not NULL
+	if(!is.null(threshold)) output <- output + ggplot2::geom_hline(yintercept = threshold, linetype = 2)
 
 	return(output)
 }

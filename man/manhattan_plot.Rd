@@ -12,8 +12,9 @@ manhattan_plot(
   signals = NULL,
   extent = FALSE,
   single_panel = TRUE,
-  threshold = 5,
-  min_log10p = 0
+  threshold = NULL,
+  min_log10p = 0,
+  plot_mapq = FALSE
 )
 }
 \arguments{
@@ -64,6 +65,9 @@ threshold line should be plotted.}
 
 \item{min_log10p}{Numeric. The minimum -log10(p-value) to display on the plot
 can be used to filter out some non-significant markers for plotting speedup.}
+
+\item{plot_mapq}{Logical. Whether to plot the mapping quality (MAPQ) as the
+color aesthetic (when provided as k-mers data).}
 }
 \value{
 A ggplot object describing a Manhattan plot with the specified parameters.
