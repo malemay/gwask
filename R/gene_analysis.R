@@ -162,3 +162,67 @@ extract_genes <- function(signals, genes) {
 	findOverlaps(signals, genes)
 }
 
+#' Get the signed distance between a gene and markers in a signal
+#'
+#' This function takes a set of signals found by a GWAS analysis
+#' and extracts the one (if any) that overlaps a gene of interest.
+#' If there is one such signal, then the distance from all the
+#' markers in that signal and the gene of interest is computed and
+#' returned.
+#'
+#' @param signals A GRanges object of GWAS signals to check for potential
+#'   overlaps with the genes.
+#' @param markers A data.frame of markers used in GWAS.
+#' @param gene_id A character. The name of a gene in the set of genes
+#'   to check for overlaps.
+#' @param genes A GRanges object containing the positions of genes to
+#'   look for.
+#'
+#' @return A GRanges object of the same form as the markers data.frame
+#'   but with an added column "distance" showing the (signed) distance
+#'   from each marker to the gene of interest. Only the markers in the
+#'   signal that overlaps the genes are returned. If none of the signals
+#'   or no markers are located in the interval of interest, then an empty
+#'   GRanges object is returned.
+#'
+#' @export
+#' @examples
+#' NULL
+gene_distance <- function(signals, markers, gene_id, genes) {
+	# Checking for the validity of the inputs
+	if(!(inherits(signals, "GRanges"))) {
+		stop("The signals object must inherit from GRanges")
+	}
+
+	if(!(inherits(genes, "GRanges"))) {
+		stop("The genes object must inherit from GRanges")
+	}
+
+	if(!gene_id %in% names(genes)) {
+		stop("gene_id not among the set of genes provided")
+	}
+
+	# Translating the markers object into a GenomicRanges object
+	markers <- GenomicRanges::makeGRangesFromDataFrame(markers,
+							   keep.extra.columns = TRUE,
+							   ignore.strand = TRUE,
+							   seqnames.field = "RNAME",
+							   start.field = "manhattan_cpos",
+							   end.field = "manhattan_cpos")
+
+	# Now we extract the signal that overlaps the gene
+	overlapping_signal <- IRanges::subsetByOverlaps(signals, genes[gene_id])
+	if(!length(overlapping_signal)) return(GRanges())
+
+	# And then we use this signal to retrieve the markers located in that region
+	markers <- IRanges::subsetByOverlaps(markers, overlapping_signal)
+	if(!length(markers)) return(GRanges())
+
+	# We add a column with the distance to the gene in the markers GRanges object
+	markers$distance <- GenomicRanges::distance(markers, genes[gene_id])
+	# We want the signed distance (expressed in terms of reference coordinates and not gene orientation)
+	markers$distance <- ifelse(start(markers) < start(genes[gene_id]), -markers$distance, markers$distance)
+
+	return(markers)
+}
+

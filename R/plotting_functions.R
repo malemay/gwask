@@ -150,3 +150,145 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 	return(output)
 }
 
+#' Plot a transcript using grid functions
+#'
+#' This function plots a transcript in a TxDb object using grid
+#' functions. This assumes that tht plotting occurs in a viewport
+#' with native coordinates already suitable for plotting that
+#' transcript.
+#'
+#' @param txdb a TxDb object containing the information on transcripts
+#'   in the genome of interest.
+#' @param gene_name A character. The name of the gene in the TxDb object
+#'   that the transcript is a part of.
+#' @param tx_name A character. The name of the transcript in the TxDb object
+#'   to be plotted.
+#'
+#' @return NULL, invisibly. The function is invoked for its side
+#'   effect of plotting the transcript.
+#'
+#' @export
+#' @examples
+#' NULL
+plot_transcript <- function(txdb, gene_name, tx_name) {
+	# We get the gene
+	tx_gene <- GenomicFeatures::genes(txdb)
+	tx_gene <- tx_gene[gene_name]
+
+	# We get the exons corresponding to that transcript
+	tx_exons <- GenomicFeatures::exonsBy(txdb, "tx", use.names = TRUE)[[tx_name]]
+
+	# Then we also want to get the coding sequences (exons except UTR regions)
+	tx_cds <- GenomicFeatures::cdsBy(txdb, "tx", use.names = TRUE)[[tx_name]]
+
+	# Drawing the line that goes from start to end of the gene
+	grid::grid.lines(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
+			 y = grid::unit(0.5, "npc"))
+
+	# Drawing the rectangles that correspond to exons
+	grid::grid.rect(x = grid::unit(GenomicRanges::start(tx_exons), "native"),
+			y = grid::unit(0.5, "npc"),
+			width = grid::unit(GenomicRanges::width(tx_exons), "native"),
+			height = grid::unit(0.8, "npc"),
+			hjust = 0,
+			gp = grid::gpar(fill = "white"))
+
+	# Doing the same thing for the coding sequences by using a shaded color
+	grid::grid.rect(x = grid::unit(GenomicRanges::start(tx_cds), "native"),
+			y = grid::unit(0.5, "npc"),
+			width = grid::unit(GenomicRanges::width(tx_cds), "native"),
+			height = grid::unit(0.8, "npc"),
+			hjust = 0,
+			gp = grid::gpar(fill = ifelse(as.character(GenomicRanges::strand(tx_cds)) == "+", "skyblue", "orange")))
+
+	return(invisible(NULL))
+}
+
+#' Plot all the possible transcripts for a gene using grid functions
+#'
+#' This function calls plot_transcript on all individual transcripts
+#' of a gene and plots each separately in a row of a viewport grid.
+#'
+#' @param txdb A TxDb object containing the genes and transcripts
+#'   of a genome of interest.
+#' @param gene_name A character. The name of the gene whose transcripts
+#'   are to be plotted.
+#'
+#' @return NULL, invisibly. The function is called for its plotting
+#'   side-effect.
+#'
+#' @export
+#' @examples
+#' NULL
+plot_transcripts <- function(txdb, gene_name) {
+	# Extracting the gene itseld from the TxDb object
+	gene <- GenomicFeatures::genes(txdb)[gene_name]
+
+	# Getting the names of the transcripts of that gene
+	tnames <- GenomicFeatures::transcriptsBy(txdb, "gene")[[gene_name]]$tx_name
+
+	# Pushing a viewport layout with as many rows as there are transcripts for that gene
+	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = length(tnames))))
+
+	# Looping over all transcripts to plot them in separate viewports
+	for(i in 1:length(tnames)) {
+		grid::pushViewport(grid::viewport(layout.pos.row = i,
+						  xscale = c(GenomicRanges::start(gene),
+							     GenomicRanges::end(gene))))
+		plot_transcript(txdb, gene_name, tnames[i])
+		grid::upViewport()
+	}
+
+	# Going back to the viewport that we started from
+	grid::upViewport()
+
+	return(invisible(NULL))
+}
+
+#' Plot the p-values of a GWAS analysis at a locus using grid functions
+#'
+#' This function takes a data.frame of formatted GWAS results and plots
+#' the p-values in a given interval.
+#'
+#' @param gwas_results A data.frame of GWAS results including minimally
+#'   the following columns for plotting: manhattan_cpos, manhattan_chrom,
+#'   and manhattan_log10p. Can also be directly provided as a GRanges object.
+#' @param interval A GRanges object used to subset the plotting to a given
+#'   region.
+#'
+#' @return NULL, invisibly. This function is called for its plotting
+#'   side-effects.
+#'
+#' @export
+#' @examples
+#' NULL
+pvalue_plot <- function(gwas_results, interval) {
+	if(!inherits(gwas_results, "GRanges")) {
+		gwas_results <- GenomicRanges::makeGRangesFromDataFrame(gwas_results,
+									keep.extra.columns = TRUE,
+									ignore.strand = TRUE,
+									seqnames.field = "manhattan_chrom",
+									start.field = "manhattan_cpos",
+									end.field = "manhattan_cpos")
+	}
+
+	# We keep only the part of the gwas_results that overlaps the interval
+	gwas_results <- IRanges::subsetByOverlaps(gwas_results, interval)
+
+	# It is an error to try and plot empty data
+	if(!length(gwas_results)) stop("No GWAS data in interval")
+
+	# Otherwise we can go on with the plotting by creating the viewport with appropriate scales
+	grid::pushViewport(grid::viewport(xscale = c(GenomicRanges::start(interval),
+						     GenomicRanges::end(interval)),
+					  yscale = c(min(gwas_results$manhattan_log10p),
+						     max(gwas_results$manhattan_log10p))))
+
+	# Then we can plot the data points
+	grid::grid.points(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
+			  y = grid::unit(gwas_results$manhattan_log10p, "native"))
+
+	# Going back up one viewport to where we were before
+	grid::upViewport()
+}
+
