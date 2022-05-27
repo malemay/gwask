@@ -4,7 +4,12 @@
 \alias{pvalue_plot}
 \title{Plot the p-values of a GWAS analysis at a locus using grid functions}
 \usage{
-pvalue_plot(gwas_results, interval, pvalue_margins = c(5.1, 4.1, 4.1, 2.1))
+pvalue_plot(
+  gwas_results,
+  interval,
+  pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
+  yexpand = c(0, 0)
+)
 }
 \arguments{
 \item{gwas_results}{A GRanges object or data.frame of GWAS results.
@@ -20,6 +25,12 @@ region.}
 length. The margins used by the function \code{\link[grid]{plotViewport}}
 to set the margins around the plotting region. By default it is set
 to c(5.1, 4.1, 4.1, 2.1).}
+
+\item{yexpand}{A numeric of length 2 representing expansion factors
+of y-scale limits. The first value is the expansion factor to
+the top while the second value is the expansion factor to the bottom.
+Values of 0 (the default) represent no expansion relative to the
+values in x-scale.}
 }
 \value{
 NULL, invisibly. This function is called for its plotting

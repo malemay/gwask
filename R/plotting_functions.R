@@ -242,6 +242,8 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 #'   length. The margins used by the function \code{\link[grid]{plotViewport}}
 #'   to set the margins around the plotting region. By default it is set
 #'   to c(0, 4.1, 0, 2.1).
+#' @param xscale A GRanges object used to set the limits of the x-axis.
+#.   If NULL (the default), it is taken to be the limits of the gene itself.
 #'
 #' @return NULL, invisibly. The function is called for its plotting
 #'   side-effect.
@@ -250,7 +252,8 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 #' @examples
 #' NULL
 plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
-			     transcript_margins = c(0, 4.1, 0, 2.1)) {
+			     transcript_margins = c(0, 4.1, 0, 2.1),
+			     xscale = NULL) {
 
 	# Checking that the inputs are of the right type
 	stopifnot(inherits(genes, "GRanges"))
@@ -267,18 +270,27 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
 	# Extracting the gene itself from the genes object
 	gene <- genes[gene_name]
 
+	# Setting the xscale
+	if(is.null(xscale)) {
+		xscale <- gene
+	} else {
+		stopifnot(length(xscale) == 1)
+		stopifnot(IRanges::overlapsAny(xscale, gene))
+	}
+
 	# Getting the names of the transcripts of that gene
 	tnames <- transcripts[[gene_name]]$tx_name
 
 	# Pushing a viewport layout with as many rows as there are transcripts for that gene
-	grid::pushViewport(grid::plotViewport(margins = transcript_margins, layout = grid::grid.layout(nrow = length(tnames))))
+	grid::pushViewport(grid::plotViewport(margins = transcript_margins,
+					      layout = grid::grid.layout(nrow = length(tnames))))
 
 	# Looping over all transcripts to plot them in separate viewports
 	for(i in 1:length(tnames)) {
 		tx_name <- tnames[i]
 		grid::pushViewport(grid::plotViewport(layout.pos.row = i,
-						      xscale = c(GenomicRanges::start(gene),
-								 GenomicRanges::end(gene))))
+						      xscale = c(GenomicRanges::start(xscale),
+								 GenomicRanges::end(xscale))))
 
 		# Calling the plot_transcript function for each transcript
 		plot_transcript(gene, exons[[tx_name]], cds[[tx_name]])
@@ -309,6 +321,11 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
 #'   length. The margins used by the function \code{\link[grid]{plotViewport}}
 #'   to set the margins around the plotting region. By default it is set
 #'   to c(5.1, 4.1, 4.1, 2.1).
+#' @param yexpand A numeric of length 2 representing expansion factors
+#'   of y-scale limits. The first value is the expansion factor to
+#'   the top while the second value is the expansion factor to the bottom.
+#'   Values of 0 (the default) represent no expansion relative to the
+#'   values in x-scale.
 #'
 #' @return NULL, invisibly. This function is called for its plotting
 #'   side-effects.
@@ -316,7 +333,9 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
 #' @export
 #' @examples
 #' NULL
-pvalue_plot <- function(gwas_results, interval, pvalue_margins  = c(5.1, 4.1 , 4.1, 2.1)) {
+pvalue_plot <- function(gwas_results, interval, 
+			pvalue_margins  = c(5.1, 4.1 , 4.1, 2.1),
+			yexpand = c(0, 0)) {
 	if(!inherits(gwas_results, "GRanges")) {
 		gwas_results <- GenomicRanges::makeGRangesFromDataFrame(gwas_results,
 									keep.extra.columns = TRUE,
@@ -332,12 +351,18 @@ pvalue_plot <- function(gwas_results, interval, pvalue_margins  = c(5.1, 4.1 , 4
 	# It is an error to try and plot empty data
 	if(!length(gwas_results)) stop("No GWAS data in interval")
 
+	# Setting the yscale interval
+	stopifnot(length(yexpand) == 2)
+	yrange <- max(gwas_results$manhattan_log10p) - min(gwas_results$manhattan_log10p)
+	yscale <- c(min(gwas_results$manhattan_log10p) - yexpand[1] * yrange,
+		    max(gwas_results$manhattan_log10p) + yexpand[2] * yrange)
+	print(yscale)
+
 	# Otherwise we can go on with the plotting by creating the viewport with appropriate scales
 	grid::pushViewport(grid::plotViewport(margins = pvalue_margins,
 					      xscale = c(GenomicRanges::start(interval),
 							 GenomicRanges::end(interval)),
-					      yscale = c(min(gwas_results$manhattan_log10p),
-							 max(gwas_results$manhattan_log10p))))
+					      yscale = yscale))
 
 	# We plot a box around the viewport
 	grid.rect()
@@ -371,6 +396,16 @@ pvalue_plot <- function(gwas_results, interval, pvalue_margins  = c(5.1, 4.1 , 4
 #'
 #' @inheritParams pvalue_plot
 #' @inheritParams plot_transcripts
+#' @param xscale A GRanges object used to restrict the plotting region.
+#'   If NULL (default), the value is taken from the gene to plot, the
+#'   two limits of the range being the start and end of the gene.
+#'   if provided, the xscale GRanges must overlap the gene.
+#' @param xexpand A numeric of length 2 representing expansion factors
+#'   of x-scale limits. The first value is the expansion factor to
+#'   the left while the second value is the expansion factor to the right.
+#'   Values of 0 (the default) represent no expansion relative to the
+#'   values in x-scale. Limits will be rounded to the nearest integer
+#'   because they need to be represented as a GRanges object.
 #'
 #' @return NULL, invisibly. The function is called for its side-effect of
 #'   plotting.
@@ -379,26 +414,46 @@ pvalue_plot <- function(gwas_results, interval, pvalue_margins  = c(5.1, 4.1 , 4
 #' @examples
 #' NULL
 pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, cds,
+			   xscale = NULL,
+			   xexpand = c(0, 0),
 			   transcript_margins = c(0, 4.1, 0, 2.1),
-			   pvalue_margins = c(5.1, 4.1, 4.1, 2.1)) {
+			   pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
+			   yexpand = c(0, 0)) {
 
 	# Checking that the left and right margins of both plots are the same number
 	stopifnot(transcript_margins[2] == pvalue_margins[2] && transcript_margins[4] == pvalue_margins[4])
 
 	gene <- genes[gene_name]
 
+	# Setting the xscale
+	if(is.null(xscale)) {
+		xscale <- gene
+	} else {
+		stopifnot(length(xscale) == 1)
+		stopifnot(IRanges::overlapsAny(xscale, gene))
+	}
+
+	# Expanding the xscale (if applicable)
+	stopifnot(length(xexpand) == 2)
+	
+	if(!all(xexpand == 0)) {
+		range_width <- GenomicRanges::width(xscale)
+		GenomicRanges::start(xscale) <- round(GenomicRanges::start(xscale) - xexpand[1] * range_width)
+		GenomicRanges::end(xscale) <- round(GenomicRanges::end(xscale) + xexpand[2] * range_width)
+	}
+
 	# Preparing the layout of the plot
 	grid::grid.newpage()
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 2, heights = grid::unit(c(0.2, 0.8), "npc"))))
 
-	# Plotting the p-values in the top viewport ; for this we need to extract the limits of the gene
-	grid::pushViewport(grid::viewport(layout.pos.row = 2))
-	pvalue_plot(gwas_results, gene, pvalue_margins = pvalue_margins)
+	# Plotting the transcripts in the top viewport
+	grid::pushViewport(grid::viewport(layout.pos.row = 1))
+	plot_transcripts(gene_name, genes, transcripts, exons, cds, transcript_margins = transcript_margins, xscale = xscale)
 	grid::upViewport()
 
-	# Plotting the transcripts in the bottom viewport
-	grid::pushViewport(grid::viewport(layout.pos.row = 1))
-	plot_transcripts(gene_name, genes, transcripts, exons, cds, transcript_margins = transcript_margins)
+	# Plotting the p-values in the bottom viewport
+	grid::pushViewport(grid::viewport(layout.pos.row = 2))
+	pvalue_plot(gwas_results, interval = xscale, pvalue_margins = pvalue_margins, yexpand = yexpand)
 	grid::upViewport()
 
 	invisible(NULL)

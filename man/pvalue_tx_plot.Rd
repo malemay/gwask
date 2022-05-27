@@ -11,8 +11,11 @@ pvalue_tx_plot(
   transcripts,
   exons,
   cds,
+  xscale = NULL,
+  xexpand = c(0, 0),
   transcript_margins = c(0, 4.1, 0, 2.1),
-  pvalue_margins = c(5.1, 4.1, 4.1, 2.1)
+  pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
+  yexpand = c(0, 0)
 )
 }
 \arguments{
@@ -45,6 +48,18 @@ in the reference genome being used. Each element of the list contains
 the coding sequences for a particular transcript, with the name of the list
 element being the name of the transcript.}
 
+\item{xscale}{A GRanges object used to restrict the plotting region.
+If NULL (default), the value is taken from the gene to plot, the
+two limits of the range being the start and end of the gene.
+if provided, the xscale GRanges must overlap the gene.}
+
+\item{xexpand}{A numeric of length 2 representing expansion factors
+of x-scale limits. The first value is the expansion factor to
+the left while the second value is the expansion factor to the right.
+Values of 0 (the default) represent no expansion relative to the
+values in x-scale. Limits will be rounded to the nearest integer
+because they need to be represented as a GRanges object.}
+
 \item{transcript_margins}{A numeric of length 4 or that can be recycled to that
 length. The margins used by the function \code{\link[grid]{plotViewport}}
 to set the margins around the plotting region. By default it is set
@@ -54,6 +69,12 @@ to c(0, 4.1, 0, 2.1).}
 length. The margins used by the function \code{\link[grid]{plotViewport}}
 to set the margins around the plotting region. By default it is set
 to c(5.1, 4.1, 4.1, 2.1).}
+
+\item{yexpand}{A numeric of length 2 representing expansion factors
+of y-scale limits. The first value is the expansion factor to
+the top while the second value is the expansion factor to the bottom.
+Values of 0 (the default) represent no expansion relative to the
+values in x-scale.}
 }
 \value{
 NULL, invisibly. The function is called for its side-effect of

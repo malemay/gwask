@@ -10,7 +10,8 @@ plot_transcripts(
   transcripts,
   exons,
   cds,
-  transcript_margins = c(0, 4.1, 0, 2.1)
+  transcript_margins = c(0, 4.1, 0, 2.1),
+  xscale = NULL
 )
 }
 \arguments{
@@ -41,6 +42,8 @@ element being the name of the transcript.}
 length. The margins used by the function \code{\link[grid]{plotViewport}}
 to set the margins around the plotting region. By default it is set
 to c(0, 4.1, 0, 2.1).}
+
+\item{xscale}{A GRanges object used to set the limits of the x-axis.}
 }
 \value{
 NULL, invisibly. The function is called for its plotting
