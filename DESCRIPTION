@@ -11,4 +11,4 @@ Encoding: UTF-8
 LaztData: true
 Imports:
 	ggplot2
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.0

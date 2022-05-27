@@ -170,16 +170,7 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 #' @export
 #' @examples
 #' NULL
-plot_transcript <- function(txdb, gene_name, tx_name) {
-	# We get the gene
-	tx_gene <- GenomicFeatures::genes(txdb)
-	tx_gene <- tx_gene[gene_name]
-
-	# We get the exons corresponding to that transcript
-	tx_exons <- GenomicFeatures::exonsBy(txdb, "tx", use.names = TRUE)[[tx_name]]
-
-	# Then we also want to get the coding sequences (exons except UTR regions)
-	tx_cds <- GenomicFeatures::cdsBy(txdb, "tx", use.names = TRUE)[[tx_name]]
+plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 
 	# Drawing the line that goes from start to end of the gene
 	grid::grid.lines(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
@@ -220,22 +211,23 @@ plot_transcript <- function(txdb, gene_name, tx_name) {
 #' @export
 #' @examples
 #' NULL
-plot_transcripts <- function(txdb, gene_name) {
-	# Extracting the gene itseld from the TxDb object
-	gene <- GenomicFeatures::genes(txdb)[gene_name]
+plot_transcripts <- function(gene_name, genes, transcripts, exons, cds) {
+	# Extracting the gene itself from the genes object
+	gene <- genes[gene_name]
 
 	# Getting the names of the transcripts of that gene
-	tnames <- GenomicFeatures::transcriptsBy(txdb, "gene")[[gene_name]]$tx_name
+	tnames <- transcripts[[gene_name]]$tx_name
 
 	# Pushing a viewport layout with as many rows as there are transcripts for that gene
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = length(tnames))))
 
 	# Looping over all transcripts to plot them in separate viewports
 	for(i in 1:length(tnames)) {
+		tx_name <- tnames[i]
 		grid::pushViewport(grid::viewport(layout.pos.row = i,
 						  xscale = c(GenomicRanges::start(gene),
 							     GenomicRanges::end(gene))))
-		plot_transcript(txdb, gene_name, tnames[i])
+		plot_transcript(gene, exons[[tx_name]], cds[[tx_name]])
 		grid::upViewport()
 	}
 
@@ -279,16 +271,61 @@ pvalue_plot <- function(gwas_results, interval) {
 	if(!length(gwas_results)) stop("No GWAS data in interval")
 
 	# Otherwise we can go on with the plotting by creating the viewport with appropriate scales
-	grid::pushViewport(grid::viewport(xscale = c(GenomicRanges::start(interval),
-						     GenomicRanges::end(interval)),
-					  yscale = c(min(gwas_results$manhattan_log10p),
-						     max(gwas_results$manhattan_log10p))))
+	grid::pushViewport(grid::plotViewport(xscale = c(GenomicRanges::start(interval),
+							 GenomicRanges::end(interval)),
+					      yscale = c(min(gwas_results$manhattan_log10p),
+							 max(gwas_results$manhattan_log10p))))
+
+	# We plot a box around the viewport
+	grid.rect()
 
 	# Then we can plot the data points
 	grid::grid.points(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
 			  y = grid::unit(gwas_results$manhattan_log10p, "native"))
 
+	# Adding x- and y-axis
+	grid.xaxis()
+	grid.yaxis()
+
+	# Adding the axis labels
+	grid.text("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90)
+	grid.text("Position along reference (bp)", y = grid::unit(-3, "lines"))
+
 	# Going back up one viewport to where we were before
+	grid::upViewport()
+}
+
+#' Plotting p-values along transcript model using grid functions
+#'
+#' This function plots the p-values observed along the genome in
+#' the top panel and a model of the transcripts for genes in the
+#' region in the bottom panel.
+#'
+#' @param gwas_result To complete
+#' @param txdb To complete
+#' @param gene_name To complete
+#'
+#' @return To complete
+#' @export
+#'
+#' @examples
+#' NULL
+pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, cds) {
+
+	gene <- genes[gene_name]
+
+	# Preparing the layout of the plot
+	grid::grid.newpage()
+	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 3, heights = grid::unit(c(0.6, 0.2, 0.2), "npc"))))
+
+	# Plotting the p-values in the top viewport ; for this we need to extract the limits of the gene
+	grid::pushViewport(grid::viewport(layout.pos.row = 1))
+	pvalue_plot(gwas_results, gene)
+	grid::upViewport()
+
+	# Plotting the transcripts in the bottom viewport
+	grid::pushViewport(grid::viewport(layout.pos.row = 3))
+	plot_transcripts(gene_name, genes, transcripts, exons, cds)
 	grid::upViewport()
 }
 

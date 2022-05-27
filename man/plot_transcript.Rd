@@ -4,7 +4,7 @@
 \alias{plot_transcript}
 \title{Plot a transcript using grid functions}
 \usage{
-plot_transcript(txdb, gene_name, tx_name)
+plot_transcript(tx_gene, tx_exons, tx_cds)
 }
 \arguments{
 \item{txdb}{a TxDb object containing the information on transcripts

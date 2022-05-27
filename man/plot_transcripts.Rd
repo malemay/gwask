@@ -4,14 +4,14 @@
 \alias{plot_transcripts}
 \title{Plot all the possible transcripts for a gene using grid functions}
 \usage{
-plot_transcripts(txdb, gene_name)
+plot_transcripts(gene_name, genes, transcripts, exons, cds)
 }
 \arguments{
-\item{txdb}{A TxDb object containing the genes and transcripts
-of a genome of interest.}
-
 \item{gene_name}{A character. The name of the gene whose transcripts
 are to be plotted.}
+
+\item{txdb}{A TxDb object containing the genes and transcripts
+of a genome of interest.}
 }
 \value{
 NULL, invisibly. The function is called for its plotting
