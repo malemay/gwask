@@ -4,7 +4,7 @@
 \alias{pvalue_plot}
 \title{Plot the p-values of a GWAS analysis at a locus using grid functions}
 \usage{
-pvalue_plot(gwas_results, interval)
+pvalue_plot(gwas_results, interval, pvalue_margins = c(5.1, 4.1, 4.1, 2.1))
 }
 \arguments{
 \item{gwas_results}{A GRanges object or data.frame of GWAS results.
@@ -15,6 +15,11 @@ p-values on the y-axis.}
 
 \item{interval}{A GRanges object used to subset the plotting to a given
 region.}
+
+\item{pvalue_margins}{A numeric of length 4 or that can be recycled to that
+length. The margins used by the function \code{\link[grid]{plotViewport}}
+to set the margins around the plotting region. By default it is set
+to c(5.1, 4.1, 4.1, 2.1).}
 }
 \value{
 NULL, invisibly. This function is called for its plotting

@@ -4,7 +4,14 @@
 \alias{plot_transcripts}
 \title{Plot all the possible transcripts for a gene using grid functions}
 \usage{
-plot_transcripts(gene_name, genes, transcripts, exons, cds)
+plot_transcripts(
+  gene_name,
+  genes,
+  transcripts,
+  exons,
+  cds,
+  transcript_margins = c(0, 4.1, 0, 2.1)
+)
 }
 \arguments{
 \item{gene_name}{A character. The name of the gene whose transcripts
@@ -29,6 +36,11 @@ element being the name of the transcript.}
 in the reference genome being used. Each element of the list contains
 the coding sequences for a particular transcript, with the name of the list
 element being the name of the transcript.}
+
+\item{transcript_margins}{A numeric of length 4 or that can be recycled to that
+length. The margins used by the function \code{\link[grid]{plotViewport}}
+to set the margins around the plotting region. By default it is set
+to c(0, 4.1, 0, 2.1).}
 }
 \value{
 NULL, invisibly. The function is called for its plotting

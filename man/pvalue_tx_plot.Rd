@@ -4,7 +4,16 @@
 \alias{pvalue_tx_plot}
 \title{Plotting p-values along transcript model using grid functions}
 \usage{
-pvalue_tx_plot(gwas_results, gene_name, genes, transcripts, exons, cds)
+pvalue_tx_plot(
+  gwas_results,
+  gene_name,
+  genes,
+  transcripts,
+  exons,
+  cds,
+  transcript_margins = c(0, 4.1, 0, 2.1),
+  pvalue_margins = c(5.1, 4.1, 4.1, 2.1)
+)
 }
 \arguments{
 \item{gwas_results}{A GRanges object or data.frame of GWAS results.
@@ -35,6 +44,16 @@ element being the name of the transcript.}
 in the reference genome being used. Each element of the list contains
 the coding sequences for a particular transcript, with the name of the list
 element being the name of the transcript.}
+
+\item{transcript_margins}{A numeric of length 4 or that can be recycled to that
+length. The margins used by the function \code{\link[grid]{plotViewport}}
+to set the margins around the plotting region. By default it is set
+to c(0, 4.1, 0, 2.1).}
+
+\item{pvalue_margins}{A numeric of length 4 or that can be recycled to that
+length. The margins used by the function \code{\link[grid]{plotViewport}}
+to set the margins around the plotting region. By default it is set
+to c(5.1, 4.1, 4.1, 2.1).}
 }
 \value{
 NULL, invisibly. The function is called for its side-effect of
@@ -42,8 +61,14 @@ NULL, invisibly. The function is called for its side-effect of
 }
 \description{
 This function plots the p-values observed along the genome in
-the top panel and a model of the transcripts for genes in the
-region in the bottom panel.
+the bottom panel and a model of the transcripts for genes in the
+region in the top panel.
+}
+\details{
+The margins of the transcript and p-value plots are set separately
+but the left and right margins of each must align in order for the
+x-axis values to match on both plots. The function will fail if
+this condition is not respected.
 }
 \examples{
 NULL
