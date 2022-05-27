@@ -10,8 +10,25 @@ plot_transcripts(gene_name, genes, transcripts, exons, cds)
 \item{gene_name}{A character. The name of the gene whose transcripts
 are to be plotted.}
 
-\item{txdb}{A TxDb object containing the genes and transcripts
-of a genome of interest.}
+\item{genes}{A GRanges object containing the known genes for the
+reference genome being studied, as obtained from processing
+a TxDb object of the GenomicFeatures package.}
+
+\item{transcripts}{A GRangesList object containing the possible
+transcripts for the set of genes in the reference genome being used.
+Each element of the GRangesList object is a GRanges object containing
+the known transcripts for a particular gene, with the name of the
+list element being the name of the gene.}
+
+\item{exons}{A GRangesList object containing the documented exons
+in the reference genome being used. Each element of the list contains
+the exons for a particular transcript, with the name of the list
+element being the name of the transcript.}
+
+\item{cds}{A GRangesList object containing the documented coding sequences
+in the reference genome being used. Each element of the list contains
+the coding sequences for a particular transcript, with the name of the list
+element being the name of the transcript.}
 }
 \value{
 NULL, invisibly. The function is called for its plotting
@@ -20,6 +37,19 @@ NULL, invisibly. The function is called for its plotting
 \description{
 This function calls plot_transcript on all individual transcripts
 of a gene and plots each separately in a row of a viewport grid.
+}
+\details{
+At the moment, this function requires as input the full set of
+genes, transcripts, exons and coding sequences for the reference
+genome being used. It will check that transcripts exist for all
+genes provided even if it is meant to plot a single gene. This
+behaviour may be modified in the future depending on use cases.
+
+The function itself does not plot any objects but instead arranges
+the viewport layout and moving between viewports, and calls the
+\code{\link{plot_transcript}} to plot the transcripts one by one.
+The latter is the function that should be modified for changing
+the way that plotted transcripts look.
 }
 \examples{
 NULL

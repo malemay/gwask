@@ -7,14 +7,38 @@
 pvalue_tx_plot(gwas_results, gene_name, genes, transcripts, exons, cds)
 }
 \arguments{
-\item{gene_name}{To complete}
+\item{gwas_results}{A GRanges object or data.frame of GWAS results.
+If a data.frame, must include the columns manhattan_chrom and
+manhattan_cpos for coercion to a GRanges. The metadata column
+manhattan_log10p must be present as it will be used to plot the
+p-values on the y-axis.}
 
-\item{gwas_result}{To complete}
+\item{gene_name}{A character. The name of the gene whose transcripts
+are to be plotted.}
 
-\item{txdb}{To complete}
+\item{genes}{A GRanges object containing the known genes for the
+reference genome being studied, as obtained from processing
+a TxDb object of the GenomicFeatures package.}
+
+\item{transcripts}{A GRangesList object containing the possible
+transcripts for the set of genes in the reference genome being used.
+Each element of the GRangesList object is a GRanges object containing
+the known transcripts for a particular gene, with the name of the
+list element being the name of the gene.}
+
+\item{exons}{A GRangesList object containing the documented exons
+in the reference genome being used. Each element of the list contains
+the exons for a particular transcript, with the name of the list
+element being the name of the transcript.}
+
+\item{cds}{A GRangesList object containing the documented coding sequences
+in the reference genome being used. Each element of the list contains
+the coding sequences for a particular transcript, with the name of the list
+element being the name of the transcript.}
 }
 \value{
-To complete
+NULL, invisibly. The function is called for its side-effect of
+  plotting.
 }
 \description{
 This function plots the p-values observed along the genome in

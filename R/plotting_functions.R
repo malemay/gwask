@@ -152,17 +152,25 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 
 #' Plot a transcript using grid functions
 #'
-#' This function plots a transcript in a TxDb object using grid
-#' functions. This assumes that tht plotting occurs in a viewport
-#' with native coordinates already suitable for plotting that
-#' transcript.
+#' This function plots a transcript model using grid functions.
+#' 
+#' The function assumes that that plotting occurs in a viewport
+#' with x-axis native coordinates already suitable for plotting that
+#' transcript. y-axis coordinates do not matter and "npc" coordinates
+#' are used for centering the transcript models vertically in the
+#' viewport.
 #'
-#' @param txdb a TxDb object containing the information on transcripts
-#'   in the genome of interest.
-#' @param gene_name A character. The name of the gene in the TxDb object
-#'   that the transcript is a part of.
-#' @param tx_name A character. The name of the transcript in the TxDb object
-#'   to be plotted.
+#' The function will be typically called by the wrapper function
+#' \code{\link{plot_transcripts}} that will take care of organizing
+#' the viewports and coordinate scales for plotting all the transcripts
+#' of a given gene model.
+#'
+#' @param tx_gene A GRanges object representing the coordinates of
+#'   of a single gene to which the transcript belongs.
+#' @param tx_exons A GRanges object representing the exons belonging
+#'   to a single transcript.
+#' @param tx_name A GRanges object representing the coding sequences
+#'   belonging to a single transcript.
 #'
 #' @return NULL, invisibly. The function is invoked for its side
 #'   effect of plotting the transcript.
@@ -200,10 +208,36 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 #' This function calls plot_transcript on all individual transcripts
 #' of a gene and plots each separately in a row of a viewport grid.
 #'
-#' @param txdb A TxDb object containing the genes and transcripts
-#'   of a genome of interest.
+#' At the moment, this function requires as input the full set of
+#' genes, transcripts, exons and coding sequences for the reference
+#' genome being used. It will check that transcripts exist for all
+#' genes provided even if it is meant to plot a single gene. This
+#' behaviour may be modified in the future depending on use cases.
+#'
+#' The function itself does not plot any objects but instead arranges
+#' the viewport layout and moving between viewports, and calls the
+#' \code{\link{plot_transcript}} to plot the transcripts one by one.
+#' The latter is the function that should be modified for changing
+#' the way that plotted transcripts look.
+#'
 #' @param gene_name A character. The name of the gene whose transcripts
 #'   are to be plotted.
+#' @param genes A GRanges object containing the known genes for the
+#'   reference genome being studied, as obtained from processing
+#'   a TxDb object of the GenomicFeatures package.
+#' @param transcripts A GRangesList object containing the possible
+#'   transcripts for the set of genes in the reference genome being used.
+#'   Each element of the GRangesList object is a GRanges object containing
+#'   the known transcripts for a particular gene, with the name of the
+#'   list element being the name of the gene.
+#' @param exons A GRangesList object containing the documented exons
+#'   in the reference genome being used. Each element of the list contains
+#'   the exons for a particular transcript, with the name of the list
+#'   element being the name of the transcript.
+#' @param cds A GRangesList object containing the documented coding sequences
+#'   in the reference genome being used. Each element of the list contains
+#'   the coding sequences for a particular transcript, with the name of the list
+#'   element being the name of the transcript.
 #'
 #' @return NULL, invisibly. The function is called for its plotting
 #'   side-effect.
@@ -212,6 +246,19 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 #' @examples
 #' NULL
 plot_transcripts <- function(gene_name, genes, transcripts, exons, cds) {
+
+	# Checking that the inputs are of the right type
+	stopifnot(inherits(genes, "GRanges"))
+	stopifnot(inherits(transcripts, "GRangesList"))
+	stopifnot(inherits(exons, "GRangesList"))
+	stopifnot(inherits(cds, "GRangesList"))
+
+	# Doing a few more sanity checks on the inputs
+	stopifnot(gene_name %in% names(genes))
+	stopifnot(all(names(genes) %in% names(transcripts)))
+	stopifnot(sum(lengths(transcripts)) == length(exons))
+	stopifnot(sum(lengths(transcripts)) == length(cds))
+
 	# Extracting the gene itself from the genes object
 	gene <- genes[gene_name]
 
@@ -227,7 +274,11 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds) {
 		grid::pushViewport(grid::viewport(layout.pos.row = i,
 						  xscale = c(GenomicRanges::start(gene),
 							     GenomicRanges::end(gene))))
+
+		# Calling the plot_transcript function for each transcript
 		plot_transcript(gene, exons[[tx_name]], cds[[tx_name]])
+
+		# Moving back to the parent viewport
 		grid::upViewport()
 	}
 
@@ -242,9 +293,11 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds) {
 #' This function takes a data.frame of formatted GWAS results and plots
 #' the p-values in a given interval.
 #'
-#' @param gwas_results A data.frame of GWAS results including minimally
-#'   the following columns for plotting: manhattan_cpos, manhattan_chrom,
-#'   and manhattan_log10p. Can also be directly provided as a GRanges object.
+#' @param gwas_results A GRanges object or data.frame of GWAS results.
+#'   If a data.frame, must include the columns manhattan_chrom and
+#'   manhattan_cpos for coercion to a GRanges. The metadata column
+#'   manhattan_log10p must be present as it will be used to plot the
+#'   p-values on the y-axis.
 #' @param interval A GRanges object used to subset the plotting to a given
 #'   region.
 #'
@@ -301,11 +354,11 @@ pvalue_plot <- function(gwas_results, interval) {
 #' the top panel and a model of the transcripts for genes in the
 #' region in the bottom panel.
 #'
-#' @param gwas_result To complete
-#' @param txdb To complete
-#' @param gene_name To complete
+#' @inheritParams pvalue_plot
+#' @inheritParams plot_transcripts
 #'
-#' @return To complete
+#' @return NULL, invisibly. The function is called for its side-effect of
+#'   plotting.
 #' @export
 #'
 #' @examples
@@ -327,5 +380,7 @@ pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, c
 	grid::pushViewport(grid::viewport(layout.pos.row = 3))
 	plot_transcripts(gene_name, genes, transcripts, exons, cds)
 	grid::upViewport()
+
+	invisible(NULL)
 }
 

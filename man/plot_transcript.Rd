@@ -7,24 +7,33 @@
 plot_transcript(tx_gene, tx_exons, tx_cds)
 }
 \arguments{
-\item{txdb}{a TxDb object containing the information on transcripts
-in the genome of interest.}
+\item{tx_gene}{A GRanges object representing the coordinates of
+of a single gene to which the transcript belongs.}
 
-\item{gene_name}{A character. The name of the gene in the TxDb object
-that the transcript is a part of.}
+\item{tx_exons}{A GRanges object representing the exons belonging
+to a single transcript.}
 
-\item{tx_name}{A character. The name of the transcript in the TxDb object
-to be plotted.}
+\item{tx_name}{A GRanges object representing the coding sequences
+belonging to a single transcript.}
 }
 \value{
 NULL, invisibly. The function is invoked for its side
   effect of plotting the transcript.
 }
 \description{
-This function plots a transcript in a TxDb object using grid
-functions. This assumes that tht plotting occurs in a viewport
-with native coordinates already suitable for plotting that
-transcript.
+This function plots a transcript model using grid functions.
+}
+\details{
+The function assumes that that plotting occurs in a viewport
+with x-axis native coordinates already suitable for plotting that
+transcript. y-axis coordinates do not matter and "npc" coordinates
+are used for centering the transcript models vertically in the
+viewport.
+
+The function will be typically called by the wrapper function
+\code{\link{plot_transcripts}} that will take care of organizing
+the viewports and coordinate scales for plotting all the transcripts
+of a given gene model.
 }
 \examples{
 NULL

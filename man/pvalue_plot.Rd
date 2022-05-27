@@ -7,9 +7,11 @@
 pvalue_plot(gwas_results, interval)
 }
 \arguments{
-\item{gwas_results}{A data.frame of GWAS results including minimally
-the following columns for plotting: manhattan_cpos, manhattan_chrom,
-and manhattan_log10p. Can also be directly provided as a GRanges object.}
+\item{gwas_results}{A GRanges object or data.frame of GWAS results.
+If a data.frame, must include the columns manhattan_chrom and
+manhattan_cpos for coercion to a GRanges. The metadata column
+manhattan_log10p must be present as it will be used to plot the
+p-values on the y-axis.}
 
 \item{interval}{A GRanges object used to subset the plotting to a given
 region.}
