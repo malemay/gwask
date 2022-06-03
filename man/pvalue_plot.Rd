@@ -22,6 +22,11 @@ p-values on the y-axis.}
 \item{interval}{A GRanges object used to subset the plotting to a given
 region.}
 
+\item{feature}{A GRanges object indicating the position of a feature of
+interest to mark with vertical dotted lines. Both the start and end of
+the feature will be indicated with a line. If NULL (default), then no
+lines are drawn.}
+
 \item{pvalue_margins}{A numeric of length 4 or that can be recycled to that
 length. The margins used by the function \code{\link[grid]{plotViewport}}
 to set the margins around the plotting region. By default it is set

@@ -49,6 +49,11 @@ element being the name of the transcript.}
 Typically, it will be a GWAS signal or a gene known to be involved
 in the phenotype studied.}
 
+\item{feature}{A GRanges object indicating the position of a feature of
+interest to mark with vertical dotted lines. Both the start and end of
+the feature will be indicated with a line. If NULL (default), then no
+lines are drawn.}
+
 \item{xexpand}{A numeric of length 2 representing expansion factors
 of x-scale limits. The first value is the expansion factor to
 the left while the second value is the expansion factor to the right.
