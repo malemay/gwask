@@ -2,22 +2,18 @@
 % Please edit documentation in R/plotting_functions.R
 \name{plot_transcripts}
 \alias{plot_transcripts}
-\title{Plot all the possible transcripts for a gene using grid functions}
+\title{Plot all the possible transcripts for genes in a genomic region using grid functions}
 \usage{
 plot_transcripts(
-  gene_name,
   genes,
   transcripts,
   exons,
   cds,
-  transcript_margins = c(0, 4.1, 0, 2.1),
-  xscale = NULL
+  xscale,
+  transcript_margins = c(0, 4.1, 0, 2.1)
 )
 }
 \arguments{
-\item{gene_name}{A character. The name of the gene whose transcripts
-are to be plotted.}
-
 \item{genes}{A GRanges object containing the known genes for the
 reference genome being studied, as obtained from processing
 a TxDb object of the GenomicFeatures package.}
@@ -38,12 +34,14 @@ in the reference genome being used. Each element of the list contains
 the coding sequences for a particular transcript, with the name of the list
 element being the name of the transcript.}
 
+\item{xscale}{A GRanges object used to set the limits of the x-axis
+and to subset the genes object such that only the ones located in the 
+interval are plotted.}
+
 \item{transcript_margins}{A numeric of length 4 or that can be recycled to that
 length. The margins used by the function \code{\link[grid]{plotViewport}}
 to set the margins around the plotting region. By default it is set
 to c(0, 4.1, 0, 2.1).}
-
-\item{xscale}{A GRanges object used to set the limits of the x-axis.}
 }
 \value{
 NULL, invisibly. The function is called for its plotting
@@ -51,20 +49,28 @@ NULL, invisibly. The function is called for its plotting
 }
 \description{
 This function calls plot_transcript on all individual transcripts
-of a gene and plots each separately in a row of a viewport grid.
+of the genes located in a given genomic region and plots each separately
+in a row of a viewport grid.
 }
 \details{
-At the moment, this function requires as input the full set of
-genes, transcripts, exons and coding sequences for the reference
-genome being used. It will check that transcripts exist for all
-genes provided even if it is meant to plot a single gene. This
+This function requires as input the full set of genes, transcripts,
+exons and coding sequences for the reference genome being used. It 
+will check that transcripts exist for all genes provided. This
 behaviour may be modified in the future depending on use cases.
+
+It is also an error in the current implementation to try and plot
+over an interval that does not overlap any genes.
 
 The function itself does not plot any objects but instead arranges
 the viewport layout and moving between viewports, and calls the
 \code{\link{plot_transcript}} to plot the transcripts one by one.
 The latter is the function that should be modified for changing
 the way that plotted transcripts look.
+
+The number of rows in the plotting viewport is the number of trancripts
+for the gene with the most transcripts over the interval. This is done
+so that enough space is provided to plot all transcripts for a given
+gene below each other.
 }
 \examples{
 NULL

@@ -7,6 +7,7 @@
 pvalue_plot(
   gwas_results,
   interval,
+  feature = NULL,
   pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
   yexpand = c(0, 0)
 )

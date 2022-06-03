@@ -214,16 +214,19 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 	return(invisible(NULL))
 }
 
-#' Plot all the possible transcripts for a gene using grid functions
+#' Plot all the possible transcripts for genes in a genomic region using grid functions
 #'
 #' This function calls plot_transcript on all individual transcripts
-#' of a gene and plots each separately in a row of a viewport grid.
+#' of the genes located in a given genomic region and plots each separately
+#' in a row of a viewport grid.
 #'
-#' At the moment, this function requires as input the full set of
-#' genes, transcripts, exons and coding sequences for the reference
-#' genome being used. It will check that transcripts exist for all
-#' genes provided even if it is meant to plot a single gene. This
+#' This function requires as input the full set of genes, transcripts,
+#' exons and coding sequences for the reference genome being used. It 
+#' will check that transcripts exist for all genes provided. This
 #' behaviour may be modified in the future depending on use cases.
+#'
+#' It is also an error in the current implementation to try and plot
+#' over an interval that does not overlap any genes.
 #'
 #' The function itself does not plot any objects but instead arranges
 #' the viewport layout and moving between viewports, and calls the
@@ -231,8 +234,11 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 #' The latter is the function that should be modified for changing
 #' the way that plotted transcripts look.
 #'
-#' @param gene_name A character. The name of the gene whose transcripts
-#'   are to be plotted.
+#' The number of rows in the plotting viewport is the number of trancripts
+#' for the gene with the most transcripts over the interval. This is done
+#' so that enough space is provided to plot all transcripts for a given
+#' gene below each other.
+#'
 #' @param genes A GRanges object containing the known genes for the
 #'   reference genome being studied, as obtained from processing
 #'   a TxDb object of the GenomicFeatures package.
@@ -249,12 +255,13 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 #'   in the reference genome being used. Each element of the list contains
 #'   the coding sequences for a particular transcript, with the name of the list
 #'   element being the name of the transcript.
+#' @param xscale A GRanges object used to set the limits of the x-axis
+#'   and to subset the genes object such that only the ones located in the 
+#'   interval are plotted.
 #' @param transcript_margins A numeric of length 4 or that can be recycled to that
 #'   length. The margins used by the function \code{\link[grid]{plotViewport}}
 #'   to set the margins around the plotting region. By default it is set
 #'   to c(0, 4.1, 0, 2.1).
-#' @param xscale A GRanges object used to set the limits of the x-axis.
-#.   If NULL (the default), it is taken to be the limits of the gene itself.
 #'
 #' @return NULL, invisibly. The function is called for its plotting
 #'   side-effect.
@@ -262,9 +269,8 @@ plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
 #' @export
 #' @examples
 #' NULL
-plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
-			     transcript_margins = c(0, 4.1, 0, 2.1),
-			     xscale = NULL) {
+plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
+			     transcript_margins = c(0, 4.1, 0, 2.1)) {
 
 	# Checking that the inputs are of the right type
 	stopifnot(inherits(genes, "GRanges"))
@@ -273,41 +279,43 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
 	stopifnot(inherits(cds, "GRangesList"))
 
 	# Doing a few more sanity checks on the inputs
-	stopifnot(gene_name %in% names(genes))
+	stopifnot(length(xscale) == 1)
 	stopifnot(all(names(genes) %in% names(transcripts)))
 	stopifnot(sum(lengths(transcripts)) == length(exons))
 	stopifnot(sum(lengths(transcripts)) == length(cds))
 
-	# Extracting the gene itself from the genes object
-	gene <- genes[gene_name]
+	# Extracting the genes to plot from the xscale GRanges object
+	genes <- IRanges::subsetByOverlaps(genes, xscale)
+	if(!length(genes)) stop("No genes in the selected interval")
 
-	# Setting the xscale
-	if(is.null(xscale)) {
-		xscale <- gene
-	} else {
-		stopifnot(length(xscale) == 1)
-		stopifnot(IRanges::overlapsAny(xscale, gene))
-	}
+	# Extracting the transcripts related to those genes
+	transcripts <- transcripts[names(genes)]
 
-	# Getting the names of the transcripts of that gene
-	tnames <- transcripts[[gene_name]]$tx_name
+	# The number of rows for the plotting viewports depends on the gene with the most transcripts
+	nrows <- max(lengths(transcripts))
 
-	# Pushing a viewport layout with as many rows as there are transcripts for that gene
-	grid::pushViewport(grid::plotViewport(margins = transcript_margins,
-					      layout = grid::grid.layout(nrow = length(tnames))))
+	# Pushing a viewport layout with as many rows as there are transcripts for the gene with the highest number of transcripts
+	grid::pushViewport(grid::plotViewport(margins = transcript_margins, layout = grid::grid.layout(nrow = nrows)))
 
-	# Looping over all transcripts to plot them in separate viewports
-	for(i in 1:length(tnames)) {
-		tx_name <- tnames[i]
-		grid::pushViewport(grid::plotViewport(layout.pos.row = i,
-						      xscale = c(GenomicRanges::start(xscale),
-								 GenomicRanges::end(xscale))))
+	# Iterating over the genes
+	for(gene_index in 1:length(genes)) {
 
-		# Calling the plot_transcript function for each transcript
-		plot_transcript(gene, exons[[tx_name]], cds[[tx_name]])
+		# Getting the names of the transcripts of that gene
+		tnames <- transcripts[[ names(genes)[gene_index] ]]$tx_name
 
-		# Moving back to the parent viewport
-		grid::upViewport()
+		# Looping over all transcripts to plot them in separate viewports
+		for(i in 1:length(tnames)) {
+			tx_name <- tnames[i]
+			grid::pushViewport(grid::plotViewport(layout.pos.row = i,
+							      xscale = c(GenomicRanges::start(xscale),
+									 GenomicRanges::end(xscale))))
+
+			# Calling the plot_transcript function for each transcript
+			plot_transcript(genes[gene_index], exons[[tx_name]], cds[[tx_name]])
+
+			# Moving back to the parent viewport
+			grid::upViewport()
+		}
 	}
 
 	# Going back to the viewport that we started from
@@ -344,7 +352,7 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
 #' @export
 #' @examples
 #' NULL
-pvalue_plot <- function(gwas_results, interval, 
+pvalue_plot <- function(gwas_results, interval, feature = NULL,
 			pvalue_margins  = c(5.1, 4.1 , 4.1, 2.1),
 			yexpand = c(0, 0)) {
 	if(!inherits(gwas_results, "GRanges")) {
@@ -375,6 +383,19 @@ pvalue_plot <- function(gwas_results, interval,
 		grid::grid.text("Position along reference (bp)", y = grid::unit(-3, "lines"))
 		grid::upViewport()
 
+		# Adding vertical lines with the location of the feature if provided
+		if(!is.null(feature)) {
+			grid.lines(x = GenomicRanges::start(feature),
+				   y = unit(c(0, 1), "npc"),
+				   default.units = "native",
+				   gp = gpar(lty = 2))
+
+			grid.lines(x = GenomicRanges::end(feature),
+				   y = unit(c(0, 1), "npc"),
+				   default.units = "native",
+				   gp = gpar(lty = 2))
+		}
+
 		# Returning from the function because the rest of the function should not be processed
 		return(invisible(NULL))
 		
@@ -398,6 +419,19 @@ pvalue_plot <- function(gwas_results, interval,
 	# Then we can plot the data points
 	grid::grid.points(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
 			  y = grid::unit(gwas_results$log10p, "native"))
+
+	# Adding vertical lines with the location of the feature if provided
+	if(!is.null(feature)) {
+		grid.lines(x = GenomicRanges::start(feature),
+			   y = unit(c(0, 1), "npc"),
+			   default.units = "native",
+			   gp = gpar(lty = 2))
+
+		grid.lines(x = GenomicRanges::end(feature),
+			   y = unit(c(0, 1), "npc"),
+			   default.units = "native",
+			   gp = gpar(lty = 2))
+	}
 
 	# Adding x- and y-axis
 	grid.xaxis()
@@ -425,9 +459,8 @@ pvalue_plot <- function(gwas_results, interval,
 #' @inheritParams pvalue_plot
 #' @inheritParams plot_transcripts
 #' @param xscale A GRanges object used to restrict the plotting region.
-#'   If NULL (default), the value is taken from the gene to plot, the
-#'   two limits of the range being the start and end of the gene.
-#'   if provided, the xscale GRanges must overlap the gene.
+#'   Typically, it will be a GWAS signal or a gene known to be involved
+#'   in the phenotype studied.
 #' @param xexpand A numeric of length 2 representing expansion factors
 #'   of x-scale limits. The first value is the expansion factor to
 #'   the left while the second value is the expansion factor to the right.
@@ -441,8 +474,8 @@ pvalue_plot <- function(gwas_results, interval,
 #'
 #' @examples
 #' NULL
-pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, cds,
-			   xscale = NULL,
+pvalue_tx_plot <- function(gwas_results, genes, transcripts, exons, cds, xscale,
+			   feature = NULL,
 			   xexpand = c(0, 0),
 			   transcript_margins = c(0, 4.1, 0, 2.1),
 			   pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
@@ -451,18 +484,16 @@ pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, c
 	# Checking that the left and right margins of both plots are the same number
 	stopifnot(transcript_margins[2] == pvalue_margins[2] && transcript_margins[4] == pvalue_margins[4])
 
-	gene <- genes[gene_name]
-
-	# Setting the xscale
-	if(is.null(xscale)) {
-		xscale <- gene
-	} else {
-		stopifnot(length(xscale) == 1)
-		stopifnot(IRanges::overlapsAny(xscale, gene))
-	}
+	# Checking that the xscale is a single range
+	stopifnot(length(xscale) == 1)
 
 	# Expanding the xscale (if applicable)
 	stopifnot(length(xexpand) == 2)
+
+	# Checking if the feature (if provided) overlaps the xscale
+	if(!is.null(feature) && !overlapsAny(feature, xscale)) {
+		stop("The feature parameter must overlap xscale")
+	}
 	
 	if(!all(xexpand == 0)) {
 		range_width <- GenomicRanges::width(xscale)
@@ -475,12 +506,12 @@ pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, c
 
 	# Plotting the transcripts in the top viewport
 	grid::pushViewport(grid::viewport(layout.pos.row = 1))
-	plot_transcripts(gene_name, genes, transcripts, exons, cds, transcript_margins = transcript_margins, xscale = xscale)
+	plot_transcripts(genes, transcripts, exons, cds, xscale = xscale, transcript_margins = transcript_margins)
 	grid::upViewport()
 
 	# Plotting the p-values in the bottom viewport
 	grid::pushViewport(grid::viewport(layout.pos.row = 2))
-	pvalue_plot(gwas_results, interval = xscale, pvalue_margins = pvalue_margins, yexpand = yexpand)
+	pvalue_plot(gwas_results, interval = xscale, feature = feature, pvalue_margins = pvalue_margins, yexpand = yexpand)
 	grid::upViewport()
 
 	# Getting back up to the top viewport

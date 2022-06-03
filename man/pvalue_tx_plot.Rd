@@ -6,12 +6,12 @@
 \usage{
 pvalue_tx_plot(
   gwas_results,
-  gene_name,
   genes,
   transcripts,
   exons,
   cds,
-  xscale = NULL,
+  xscale,
+  feature = NULL,
   xexpand = c(0, 0),
   transcript_margins = c(0, 4.1, 0, 2.1),
   pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
@@ -24,9 +24,6 @@ If a data.frame, must include the columns manhattan_chrom and
 manhattan_cpos for coercion to a GRanges. The metadata column
 log10p must be present as it will be used to plot the
 p-values on the y-axis.}
-
-\item{gene_name}{A character. The name of the gene whose transcripts
-are to be plotted.}
 
 \item{genes}{A GRanges object containing the known genes for the
 reference genome being studied, as obtained from processing
@@ -49,9 +46,8 @@ the coding sequences for a particular transcript, with the name of the list
 element being the name of the transcript.}
 
 \item{xscale}{A GRanges object used to restrict the plotting region.
-If NULL (default), the value is taken from the gene to plot, the
-two limits of the range being the start and end of the gene.
-if provided, the xscale GRanges must overlap the gene.}
+Typically, it will be a GWAS signal or a gene known to be involved
+in the phenotype studied.}
 
 \item{xexpand}{A numeric of length 2 representing expansion factors
 of x-scale limits. The first value is the expansion factor to
