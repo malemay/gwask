@@ -359,15 +359,32 @@ pvalue_plot <- function(gwas_results, interval,
 	# We keep only the part of the gwas_results that overlaps the interval
 	gwas_results <- IRanges::subsetByOverlaps(gwas_results, interval)
 
-	# It is an error to try and plot empty data
-	if(!length(gwas_results)) stop("No GWAS data in interval")
+	# An empty GWAS dataset over the range needs to be handled in a special way
+	if(!length(gwas_results)) {
+		warning("No GWAS data in interval")
+
+		grid::pushViewport(grid::plotViewport(margins = pvalue_margins,
+						      xscale = c(GenomicRanges::start(interval),
+								 GenomicRanges::end(interval)),
+						      yscale = c(0, 1)))
+
+		# Plotting some very basic features
+		grid::grid.rect()
+		grid::grid.text("No GWAS data in selected range")
+		grid::grid.xaxis()
+		grid::grid.text("Position along reference (bp)", y = grid::unit(-3, "lines"))
+		grid::upViewport()
+
+		# Returning from the function because the rest of the function should not be processed
+		return(invisible(NULL))
+		
+	}
 
 	# Setting the yscale interval
 	stopifnot(length(yexpand) == 2)
 	yrange <- max(gwas_results$log10p) - min(gwas_results$log10p)
 	yscale <- c(min(gwas_results$log10p) - yexpand[1] * yrange,
 		    max(gwas_results$log10p) + yexpand[2] * yrange)
-	print(yscale)
 
 	# Otherwise we can go on with the plotting by creating the viewport with appropriate scales
 	grid::pushViewport(grid::plotViewport(margins = pvalue_margins,
@@ -454,7 +471,6 @@ pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, c
 	}
 
 	# Preparing the layout of the plot
-	grid::grid.newpage()
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 2, heights = grid::unit(c(0.2, 0.8), "npc"))))
 
 	# Plotting the transcripts in the top viewport
@@ -466,6 +482,9 @@ pvalue_tx_plot <- function(gwas_results, gene_name, genes, transcripts, exons, c
 	grid::pushViewport(grid::viewport(layout.pos.row = 2))
 	pvalue_plot(gwas_results, interval = xscale, pvalue_margins = pvalue_margins, yexpand = yexpand)
 	grid::upViewport()
+
+	# Getting back up to the top viewport
+	upViewport()
 
 	invisible(NULL)
 }
