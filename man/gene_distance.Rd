@@ -4,22 +4,20 @@
 \alias{gene_distance}
 \title{Get the signed distance between a gene and markers in a signal}
 \usage{
-gene_distance(signals, markers, gene_id, genes)
+gene_distance(signals, markers, gene)
 }
 \arguments{
 \item{signals}{A GRanges object of GWAS signals to check for potential
 overlaps with the genes.}
 
-\item{markers}{A data.frame of markers used in GWAS.}
+\item{markers}{A GRanges object of markers used in GWAS.}
 
-\item{gene_id}{A character. The name of a gene in the set of genes
-to check for overlaps.}
-
-\item{genes}{A GRanges object containing the positions of genes to
-look for.}
+\item{gene}{A GRanges object containing the positions of a gene of
+interest. In the current implementation it is an error to pass
+a GRanges object with more than one range.}
 }
 \value{
-A GRanges object of the same form as the markers data.frame
+A GRanges object of the same form as the markers GRanges
   but with an added column "distance" showing the (signed) distance
   from each marker to the gene of interest. Only the markers in the
   signal that overlaps the genes are returned. If none of the signals

@@ -1,19 +1,12 @@
 #' manhattan_plot
 #' 
-#' @param formatted_data A data.frame formatted with either \code{\link{format_kmer_gwas}}
+#' @param formatted_data A GRanges object formatted with either \code{\link{format_kmer_gwas}}
 #'   or \code{\link{format_gapit_gwas}} depending on the GWAS type. These functions
-#'   return data.frames containing standard columns in addition to GWAS type-specific
+#'   return GRanges containing standard columns and seqinfo in addition to GWAS type-specific
 #'   columns, therefore allowing a common interface for all GWAS types.
 #' @param gwas_type A character of length one. Only two options are supported at
 #'   this time, either \code{"kmer"} for k-mer GWAS as implemented by Voichek
 #'   and Weigel (2020) or \code{"gapit"} for the output of GAPIT.
-#' @param fai_file A character of length one. The name of the .fai index file
-#'   to extract the reference genome data from.
-#' @param pattern A character of length one. A regular expression to use
-#'   for selecting what reference sequences to keep. If \code{NULL}
-#'   (the default), all sequences are used. The function will force all
-#'   references sequences kept to be plotted even if no data point or
-#'   signal is observed on it.
 #' @param signals A data.frame with the coordinates of GWAS signals to 
 #'   show on the plot. If \code{NULL} (the default) or \code{nrow(signals)} < 0,
 #'   then no signals are plotted. If supplied, the data.frame must minimally
@@ -47,15 +40,15 @@
 #' @export
 #' @examples
 #' NULL
-manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
+manhattan_plot <- function(formatted_data, gwas_type,
 			   signals = NULL, extent = FALSE, single_panel = TRUE,
 			   threshold = NULL, min_log10p = 0, plot_mapq = FALSE) {
 
 	# Sanity checks -------------------------------------
 
 	# Checking that formatted_data has the right format
-	if(!all(c("manhattan_chrom", "manhattan_rpos", "manhattan_cpos", "manhattan_log10p", "manhattan_even") %in% names(formatted_data))) {
-		stop("The formatted_data data.frame does not satisfy format requirements.")
+	if(!"log10p" %in% names(mcols(formatted_data))) {
+		stop("The formatted_data object does not satisfy format requirements.")
 	}
 
 	# Checking that gwas_type is supported
@@ -64,7 +57,7 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 	}
 
 	# Checking that the MAPQ column is suppled if type == kmer
-	if(gwas_type == "kmer" && ! "MAPQ" %in% names(formatted_data)) {
+	if(gwas_type == "kmer" && ! "MAPQ" %in% names(mcols(formatted_data))) {
 		stop("MAPQ column must be present in formatted_data for gwas_type = \"kmer\"")
 	}
 
@@ -79,15 +72,33 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 	}
 
 	# Check that mapq is only TRUE if the MAPQ column actually exists
-	if(plot_mapq && ! "MAPQ" %in% colnames(formatted_data)) {
+	if(plot_mapq && ! "MAPQ" %in% names(mcols(formatted_data))) {
 		warning("plot_mapq = TRUE but \"MAPQ\" is not among the columns. Setting plot_mapq to FALSE")
 		plot_mapq <- FALSE
 	}
 
 	# End of sanity checks ------------------------------
 
-	# Parsing the .fai index file to extract information about the reference sequences
-	fai_info <- parse_fai(fai_file, pattern)
+	# Using the seqinfo of the formatted_data input to compute various information
+	chrom_lengths <- GenomeInfoDb::seqlengths(formatted_data)
+
+	chrom_start <- cumsum(chrom_lengths)
+	chrom_start <- c(0, chrom_start[-(length(chrom_start))])
+
+	label_pos <- chrom_start + 0.5 * chrom_lengths
+
+	# All vectors have the names of the sequences to allow lookup of the info by name
+	names(chrom_start) <- names(chrom_lengths)  <- names(label_pos) <- GenomeInfoDb::seqlevels(formatted_data)
+
+	# Computing the absolute position on the genome
+	formatted_data$manhattan_rpos <- GenomicRanges::start(formatted_data) + chrom_start[as.character(GenomicRanges::seqnames(formatted_data))]
+
+	# Computing whether this chromsome is even or odd (for plotting purposes)
+	even_chromosomes <- GenomeInfoDb::seqlevels(formatted_data)[c(FALSE, TRUE)]
+	formatted_data$manhattan_even <- as.character(GenomicRanges::seqnames(formatted_data)) %in% even_chromosomes
+
+	# Issuing a warning until this functionality is restored
+	warning("signals functionality in manhattan_plot() not functional")
 
 	# Formatting the signals data for plotting (the signals format should be redesigned)
 	if(!is.null(signals) && nrow(signals)) {
@@ -100,19 +111,19 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 
 	# Removing the associations that are less significant than min_log10p
 	if(min_log10p > 0) {
-		formatted_data <- formatted_data[formatted_data$manhattan_log10p >= min_log10p, ]
+		formatted_data <- formatted_data[formatted_data$log10p >= min_log10p]
 	}
 
 	# If single_panel is TRUE, then all the data is plotted along a single axis
 	if(single_panel) {
-		output <- ggplot2::ggplot(formatted_data) +
+		output <- ggplot2::ggplot(as.data.frame(formatted_data)) +
 			ggplot2::geom_point(mapping = ggplot2::aes_string(x = "manhattan_rpos",
-									  y = "manhattan_log10p",
+									  y = "log10p",
 									  color = ifelse(plot_mapq, "MAPQ", "manhattan_even"))) +
 				ggplot2::scale_x_continuous(name = "Chromosome",
-							    breaks = fai_info$label_pos,
-							    labels = names(fai_info$start),
-							    limits = c(0, sum(fai_info$lengths))) +
+							    breaks = label_pos,
+							    labels = names(label_pos),
+							    limits = c(0, sum(chrom_lengths))) +
 				ggplot2::ylab("-log10(p-value)") +
 				ggplot2::theme_bw() +
 				ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
@@ -121,9 +132,9 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 	} else {
 	# If single_panel is not TRUE, there is one panel per chromosome
 		output <- ggplot2::ggplot(formatted_data) +
-			ggplot2::geom_point(mapping = ggplot2::aes_string(x = "Position",
-									  y = "manhattan_log10p")) +
-			ggplot2::facet_wrap(~manhattan_chrom, ncol = 5) +
+			ggplot2::geom_point(mapping = ggplot2::aes_string(x = "start",
+									  y = "log10p")) +
+			ggplot2::facet_wrap(~seqnames, ncol = 5) +
 			ggplot2::scale_x_continuous(name = "Position (bp)") +
 			ggplot2::ylab("-log10(p-value)") +
 			ggplot2::theme_bw() +
@@ -135,7 +146,7 @@ manhattan_plot <- function(formatted_data, gwas_type, fai_file, pattern = NULL,
 
 		if(extent) {
 			output <- output + ggplot2::geom_rect(data = signals,
-							      ymin = 0, ymax = max(formatted_data$manhattan_log10p),
+							      ymin = 0, ymax = max(formatted_data$log10p),
 							      ggplot2::aes(xmin = first_pos, xmax = last_pos),
 							      color = "red", alpha = 0.4)
 		}
@@ -313,7 +324,7 @@ plot_transcripts <- function(gene_name, genes, transcripts, exons, cds,
 #' @param gwas_results A GRanges object or data.frame of GWAS results.
 #'   If a data.frame, must include the columns manhattan_chrom and
 #'   manhattan_cpos for coercion to a GRanges. The metadata column
-#'   manhattan_log10p must be present as it will be used to plot the
+#'   log10p must be present as it will be used to plot the
 #'   p-values on the y-axis.
 #' @param interval A GRanges object used to subset the plotting to a given
 #'   region.
@@ -353,9 +364,9 @@ pvalue_plot <- function(gwas_results, interval,
 
 	# Setting the yscale interval
 	stopifnot(length(yexpand) == 2)
-	yrange <- max(gwas_results$manhattan_log10p) - min(gwas_results$manhattan_log10p)
-	yscale <- c(min(gwas_results$manhattan_log10p) - yexpand[1] * yrange,
-		    max(gwas_results$manhattan_log10p) + yexpand[2] * yrange)
+	yrange <- max(gwas_results$log10p) - min(gwas_results$log10p)
+	yscale <- c(min(gwas_results$log10p) - yexpand[1] * yrange,
+		    max(gwas_results$log10p) + yexpand[2] * yrange)
 	print(yscale)
 
 	# Otherwise we can go on with the plotting by creating the viewport with appropriate scales
@@ -369,7 +380,7 @@ pvalue_plot <- function(gwas_results, interval,
 
 	# Then we can plot the data points
 	grid::grid.points(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
-			  y = grid::unit(gwas_results$manhattan_log10p, "native"))
+			  y = grid::unit(gwas_results$log10p, "native"))
 
 	# Adding x- and y-axis
 	grid.xaxis()

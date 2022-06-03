@@ -2,49 +2,40 @@
 % Please edit documentation in R/input_parsing.R
 \name{format_kmer_gwas}
 \alias{format_kmer_gwas}
-\title{Format k-mer GWAS results for generating Manhattan plots}
+\title{Format k-mer GWAS results for downstream analyses}
 \usage{
-format_kmer_gwas(sam_df, fai_file, pattern = NULL)
+format_kmer_gwas(sam_df, ref_fasta, pattern = NULL, min_mapq = 0)
 }
 \arguments{
 \item{sam_df}{A data.frame of k-mer matches to alignments annotated
-with p-values, as returned by the function add_pvalues}
+with p-values, as returned by the function \code{\link{add_pvalues}}}
 
-\item{fai_file}{A character of length one. A .fai index file that
-will be queried with the \code{\link{parse_fai}} function to
-query information about the reference genome and translate
-positions on specific input sequences to positions along the
-whole reference.}
+\item{ref_fasta}{A character of length one. A fasta file that
+will be queried with the \code{\link[Rsamtools]{scanFaIndex}} function to
+query information about the reference genome and set the seqinfo fields
+of the output GRanges object.}
 
 \item{pattern}{A character of length one. A regular expression
-used to match the name of the chromosome or scaffolds in the
-.fai index file. Matching sequences will be kept. If NULL
-(the default), all sequences are kept.}
+used to match seqlevels of the chromsomes or scaffolds in the
+fasta index. Matching sequences will be kept. If NULL
+(the default), all sequences are kept. In the current implementation,
+an error will be thrown if changing the seqlevels results in matches
+being pruned.}
+
+\item{min_mapq}{A numeric of length one. The minimum mapping quality
+of the alignment on which the k-mer was found for it to be kept.
+The default value (0) implies no filtering.}
 }
 \value{
-A data.frame that contains the following standard columns
-  and can be used for generating a Manhattan plot using the 
-  function manhattan_plot.
-  \itemize{
-    \item manhattan_chrom Character. The name of the chromosome
-    \item manhattan_rpos  Numeric. The position along the chromsome
-      expressed as a cumulative position along the reference
-    \item manhattan_cpos Numeric. The position on the reference
-      expressed in terms of position along a particular chromosome
-    \item mahattan_log10p The p-value used for plotting, obtained by
-      computing -log10 of the p-value.
-    \item manhattan_even Logical. \code{TRUE} if the chromosome should be
-      considered even-valued, \code{FALSE} otherwise. Used to
-      distinguish the chromosome that are next to each other by color.
-  }
-
-  These data columns are guaranted to be the first ones, in that order,
-  in the output data.frame. Any other columns that were present in the
-  input are appended to the output data.frame as is.
+A GRanges object that contains the information on matching
+  k-mers and can be used for downstream analyses including the
+  function \code{\link{manhattan_plot}}. Must contain a field
+  called log10_p that stores the -log10(p-value) of the k-mer.
 }
 \description{
-This function takes a data.frame returned by the add_pvalues function
-and returns a standard data.frame for Manhattan plotting
+This function takes a data.frame returned by the \code{\link{add_pvalues}}
+function and returns a GRanges object suitable for downstream analyses 
+and plotting.
 }
 \examples{
 NULL

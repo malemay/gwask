@@ -15,7 +15,7 @@ pvalue_plot(
 \item{gwas_results}{A GRanges object or data.frame of GWAS results.
 If a data.frame, must include the columns manhattan_chrom and
 manhattan_cpos for coercion to a GRanges. The metadata column
-manhattan_log10p must be present as it will be used to plot the
+log10p must be present as it will be used to plot the
 p-values on the y-axis.}
 
 \item{interval}{A GRanges object used to subset the plotting to a given

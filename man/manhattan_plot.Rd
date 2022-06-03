@@ -7,8 +7,6 @@
 manhattan_plot(
   formatted_data,
   gwas_type,
-  fai_file,
-  pattern = NULL,
   signals = NULL,
   extent = FALSE,
   single_panel = TRUE,
@@ -18,23 +16,14 @@ manhattan_plot(
 )
 }
 \arguments{
-\item{formatted_data}{A data.frame formatted with either \code{\link{format_kmer_gwas}}
+\item{formatted_data}{A GRanges object formatted with either \code{\link{format_kmer_gwas}}
 or \code{\link{format_gapit_gwas}} depending on the GWAS type. These functions
-return data.frames containing standard columns in addition to GWAS type-specific
+return GRanges containing standard columns and seqinfo in addition to GWAS type-specific
 columns, therefore allowing a common interface for all GWAS types.}
 
 \item{gwas_type}{A character of length one. Only two options are supported at
 this time, either \code{"kmer"} for k-mer GWAS as implemented by Voichek
 and Weigel (2020) or \code{"gapit"} for the output of GAPIT.}
-
-\item{fai_file}{A character of length one. The name of the .fai index file
-to extract the reference genome data from.}
-
-\item{pattern}{A character of length one. A regular expression to use
-for selecting what reference sequences to keep. If \code{NULL}
-(the default), all sequences are used. The function will force all
-references sequences kept to be plotted even if no data point or
-signal is observed on it.}
 
 \item{signals}{A data.frame with the coordinates of GWAS signals to 
 show on the plot. If \code{NULL} (the default) or \code{nrow(signals)} < 0,
