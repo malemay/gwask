@@ -4,14 +4,16 @@
 \alias{format_gapit_gwas}
 \title{Format GAPIT GWAS results for generating Manhattan plots}
 \usage{
-format_gapit_gwas(gapit_df, fai_file, chromosomes, pattern = NULL)
+format_gapit_gwas(filename, ref_fasta, chromosomes, pattern = NULL)
 }
 \arguments{
-\item{fai_file}{A character of length one. A .fai index file that
-will be queried with the \code{\link{parse_fai}} function to
-query information about the reference genome and translate
-positions on specific input sequences to positions along the
-whole reference.}
+\item{filename}{Character of length one. The name of the .csv file
+containing the results of the GAPIT analysis.}
+
+\item{ref_fasta}{A character of length one. A fasta file that
+will be queried with the \code{\link[Rsamtools]{scanFaIndex}} function to
+query information about the reference genome and set the seqinfo fields
+of the output GRanges object.}
 
 \item{chromosomes}{a character vector of the same length
 as the number of unique values in the Chromosome column
@@ -21,37 +23,26 @@ character vector to translate integer values into chromosome
 names.}
 
 \item{pattern}{A character of length one. A regular expression
-used to match the name of the chromosome or scaffolds in the
-.fai index file. Matching sequences will be kept. If NULL
-(the default), all sequences are kept.}
-
-\item{sam_df}{A data.frame of GAPIT analysis results as returned
-by \code{\link{read_gapit}}.}
+used to match seqlevels of the chromsomes or scaffolds in the
+fasta index. Matching sequences will be kept. If NULL
+(the default), all sequences are kept. In the current implementation,
+an error will be thrown if changing the seqlevels results in matches
+being pruned.}
 }
 \value{
-A data.frame that contains the following standard columns
-  and can be used for generating a Manhattan plot using the 
-  function manhattan_plot.
-  \itemize{
-    \item manhattan_chrom Character. The name of the chromosome
-    \item manhattan_rpos  Numeric. The position along the chromsome
-      expressed as a cumulative position along the reference
-    \item manhattan_cpos Numeric. The position on the reference
-      expressed in terms of position along a particular chromosome
-    \item mahattan_log10p The p-value used for plotting, obtained by
-      computing -log10 of the p-value.
-    \item manhattan_even Logical. \code{TRUE} if the chromosome should be
-      considered even-valued, \code{FALSE} otherwise. Used to
-      distinguish the chromosome that are next to each other by color.
-  }
-
-  These data columns are guaranted to be the first ones, in that order,
-  in the output data.frame. Any other columns that were present in the
-  input are appended to the output data.frame as is.
+A GRanges object that contains the information on associated
+  markers and can be used for downstream analyses including the
+  function \code{\link{manhattan_plot}}. Must contain a field
+  called log10_p that stores the -log10(p-value) of the marker.
 }
 \description{
-This function takes a data.frame returned by the \code{\link{read_gapit}} function
-and returns a standard data.frame for Manhattan plotting
+This function takes a CSV file of GAPIT GWAS results and formats
+them as a GRanges object for processing with other functions, including
+\code{\link{manhattan_plot}}.
+}
+\details{
+Only relevant fields (Chromosome, Position, P.value, FDR_Adjusted_P-values)
+are kept to increase reading efficiency.
 }
 \examples{
 NULL
