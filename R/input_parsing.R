@@ -1,14 +1,16 @@
 #' Format k-mer GWAS results for downstream analyses
 #'
-#' This function takes a data.frame returned by the \code{\link{add_pvalues}}
-#' function and returns a GRanges object suitable for downstream analyses 
-#' and plotting.
+#' This function takes a sorted and indexed .bam file of reads that matched 
+#' significant k-mers as obtained from the katcher program and annotated
+#' with p-values by the add_pvalues program. It returns a GRanges object
+#' formatted for downstream analyses, including manhattan plotting.
 #'
-#' @param sam_df A data.frame of k-mer matches to alignments annotated
-#'   with p-values, as returned by the function \code{\link{add_pvalues}}
+#' @param input_bam A character. The path to an indexed .bam file that
+#'   contains KM and PV tags indicating the matching k-mers and their respective
+#'   p-values
 #' @param ref_fasta A character of length one. A fasta file that
 #'   will be queried with the \code{\link[Rsamtools]{scanFaIndex}} function to
-#'   query information about the reference genome and set the seqinfo fields
+#'   get information about the reference genome and set the seqinfo fields
 #'   of the output GRanges object.
 #' @param pattern A character of length one. A regular expression
 #'   used to match seqlevels of the chromsomes or scaffolds in the
@@ -28,22 +30,54 @@
 #' @export
 #' @examples
 #' NULL
-format_kmer_gwas <- function(sam_df, ref_fasta, pattern = NULL, min_mapq = 0) {
+format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0) {
 
 	# Reading the .fai index info
 	stopifnot(file.exists(paste0(ref_fasta, ".fai")))
 	fai_info <- Rsamtools::scanFaIndex(ref_fasta)
 
+	# Reading the .bam file
+	bam_records <- Rsamtools::scanBam(input_bam,
+					  param = Rsamtools::ScanBamParam(what = Rsamtools::scanBamWhat(),
+									  tag = c("KM", "PV")))[[1]]
+
+	# Generating a data.frame from the records and formatting the columns
+	sam_df <- as.data.frame(bam_records[1:11])
+	sam_df$rname <- as.character(sam_df$rname)
+	sam_df$strand <- as.character(sam_df$strand)
+	sam_df$mrnm <- as.character(sam_df$mrnm)
+
+	# Adding the columns that require particular formatting
+	sam_df$seq <- as.character(bam_records$seq)
+	sam_df$qual <- as.character(bam_records$qual)
+	sam_df$KM <- as.character(bam_records$tag$KM)
+	sam_df$PV <- as.character(bam_records$tag$PV)
+
+	# Removing the alignments for which the reference chromosome or position is unknown
+	sam_df <- sam_df[!is.na(sam_df$rname) & !is.na(sam_df$pos),]
+
+	# The p-value is the highest (most significant) value of any k-mer found in the read
+	# We extract both the maximum p-value and the k-mer associated with it
+	max_pv <- sapply(strsplit(sam_df$PV, ","), function(x) which.max(as.numeric(x)))
+	sam_df$kmer <- mapply(function(x, y) x[y], strsplit(sam_df$KM, ","), max_pv)
+	sam_df$pvalue <- mapply(function(x, y) as.numeric(x[y]), strsplit(sam_df$PV, ","), max_pv)
+
+	# Getting the position of the k-mer with the most significant value within the read
+	sam_df$kpos <- sam_df$pos + mapply(function(x, y) regexpr(x, y, fixed = TRUE), sam_df$kmer, sam_df$seq)
+
+	# We remove reads with k-mers that match at the same position
+	sam_df <- sam_df[!duplicated(sam_df[, c("rname", "kmer", "kpos")]), ]
+
 	# Calculating the end of the ranges from the length of the kmers
-	sam_df$end <- sam_df$ref_pos + nchar(sam_df$kmer) - 1
+	sam_df$end <- sam_df$kpos + nchar(sam_df$kmer) - 1
 
 	# Filtering based on the MAPQ
-	sam_df <- sam_df[sam_df$MAPQ >= min_mapq, ]
+	sam_df <- sam_df[sam_df$mapq >= min_mapq, ]
 
 	# Coercing the input data.frame to a GRanges object
 	output <- GenomicRanges::makeGRangesFromDataFrame(sam_df,
-							  start.field = "ref_pos",
-							  seqnames.field = "RNAME",
+							  start.field = "kpos",
+							  seqnames.field = "rname",
 							  end.field = "end",
 							  keep.extra.columns = TRUE)
 

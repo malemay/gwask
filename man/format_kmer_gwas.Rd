@@ -4,15 +4,16 @@
 \alias{format_kmer_gwas}
 \title{Format k-mer GWAS results for downstream analyses}
 \usage{
-format_kmer_gwas(sam_df, ref_fasta, pattern = NULL, min_mapq = 0)
+format_kmer_gwas(input_bam, ref_fasta, pattern = NULL, min_mapq = 0)
 }
 \arguments{
-\item{sam_df}{A data.frame of k-mer matches to alignments annotated
-with p-values, as returned by the function \code{\link{add_pvalues}}}
+\item{input_bam}{A character. The path to an indexed .bam file that
+contains KM and PV tags indicating the matching k-mers and their respective
+p-values}
 
 \item{ref_fasta}{A character of length one. A fasta file that
 will be queried with the \code{\link[Rsamtools]{scanFaIndex}} function to
-query information about the reference genome and set the seqinfo fields
+get information about the reference genome and set the seqinfo fields
 of the output GRanges object.}
 
 \item{pattern}{A character of length one. A regular expression
@@ -33,9 +34,10 @@ A GRanges object that contains the information on matching
   called log10_p that stores the -log10(p-value) of the k-mer.
 }
 \description{
-This function takes a data.frame returned by the \code{\link{add_pvalues}}
-function and returns a GRanges object suitable for downstream analyses 
-and plotting.
+This function takes a sorted and indexed .bam file of reads that matched 
+significant k-mers as obtained from the katcher program and annotated
+with p-values by the add_pvalues program. It returns a GRanges object
+formatted for downstream analyses, including manhattan plotting.
 }
 \examples{
 NULL
