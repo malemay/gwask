@@ -57,8 +57,8 @@ manhattan_plot <- function(formatted_data, gwas_type,
 	}
 
 	# Checking that the MAPQ column is suppled if type == kmer
-	if(gwas_type == "kmer" && ! "MAPQ" %in% names(mcols(formatted_data))) {
-		stop("MAPQ column must be present in formatted_data for gwas_type = \"kmer\"")
+	if(gwas_type == "kmer" && ! "mapq" %in% names(mcols(formatted_data))) {
+		stop("mapq column must be present in formatted_data for gwas_type = \"kmer\"")
 	}
 
 	# Checking that signals has the right format (if supplied)

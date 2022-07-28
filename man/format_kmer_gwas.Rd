@@ -21,7 +21,7 @@ used to match seqlevels of the chromsomes or scaffolds in the
 fasta index. Matching sequences will be kept. If NULL
 (the default), all sequences are kept. In the current implementation,
 an error will be thrown if changing the seqlevels results in matches
-being pruned.}
+being pruned. NO LONGER TRUE}
 
 \item{min_mapq}{A numeric of length one. The minimum mapping quality
 of the alignment on which the k-mer was found for it to be kept.

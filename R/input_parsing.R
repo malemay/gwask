@@ -17,7 +17,7 @@
 #'   fasta index. Matching sequences will be kept. If NULL
 #'   (the default), all sequences are kept. In the current implementation,
 #'   an error will be thrown if changing the seqlevels results in matches
-#'   being pruned.
+#'   being pruned. NO LONGER TRUE
 #' @param min_mapq A numeric of length one. The minimum mapping quality
 #'   of the alignment on which the k-mer was found for it to be kept.
 #'   The default value (0) implies no filtering.
@@ -43,6 +43,28 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0)
 
 	# Generating a data.frame from the records and formatting the columns
 	sam_df <- as.data.frame(bam_records[1:11])
+
+	# We need to handle the case if there were no reads in the .bam file
+	if(!nrow(sam_df)) {
+		output <- GRanges()
+
+		output$qname <- character()
+		output$flag <- integer()
+		output$pos <- integer()
+		output$qwidth <- integer()
+		output$mapq <- integer()
+		output$cigar <- character()
+		output$mrnm <-  character()
+		output$mpos <- integer()
+		output$isize <- integer()
+		output$pvalue <- numeric()
+		output$kmer_canon <- character()
+		output$kmer_pos_count <- integer()
+		output$log10p <- numeric()
+
+		return(output)
+	}
+
 	sam_df$rname <- as.character(sam_df$rname)
 	sam_df$strand <- as.character(sam_df$strand)
 	sam_df$mrnm <- as.character(sam_df$mrnm)
@@ -65,8 +87,16 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0)
 	# Getting the position of the k-mer with the most significant value within the read
 	sam_df$kpos <- sam_df$pos + mapply(function(x, y) regexpr(x, y, fixed = TRUE), sam_df$kmer, sam_df$seq)
 
-	# We remove reads with k-mers that match at the same position
-	sam_df <- sam_df[!duplicated(sam_df[, c("rname", "kmer", "kpos")]), ]
+	# We add a column for the reverse complement of the k-mer sequence, and another for the canonized version of the k-mer
+	sam_df$kmer_rev   <- as.character(Biostrings::reverseComplement(Biostrings::DNAStringSet(sam_df$kmer)))
+	sam_df$kmer_canon <- ifelse(sam_df$kmer < sam_df$kmer_rev, sam_df$kmer, sam_df$kmer_rev)
+
+	# We remove reads with k-mers that match at the same position, but first we count their number of occurences
+	sam_df$kmer_pos_label <- paste0(sam_df$rname, "_", sam_df$kpos, "_", sam_df$kmer_canon)
+	kmer_pos_table <- table(sam_df$kmer_pos_label)
+	sam_df$kmer_pos_count <- as.integer(kmer_pos_table[sam_df$kmer_pos_label])
+
+	sam_df <- sam_df[!duplicated(sam_df[, c("rname", "kmer_canon", "kpos")]), ]
 
 	# Calculating the end of the ranges from the length of the kmers
 	sam_df$end <- sam_df$kpos + nchar(sam_df$kmer) - 1
@@ -86,7 +116,21 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0)
 	GenomeInfoDb::seqlengths(output) <- GenomeInfoDb::seqlengths(fai_info)
 
 	# Pruning the levels according to the pattern
-	if(!is.null(pattern)) GenomeInfoDb::seqlevels(output) <- grep(pattern, GenomeInfoDb::seqlevels(output), value = TRUE)
+	if(!is.null(pattern)) GenomeInfoDb::seqlevels(output, pruning.mode = "coarse") <- grep(pattern, GenomeInfoDb::seqlevels(output), value = TRUE)
+
+	# We keep only the position at which a k-mer is most often observed
+	output <- output[order(output$kmer_canon, output$kmer_pos_count, decreasing = TRUE)]
+	output <- output[!duplicated(output$kmer_canon)]
+	output <- sort(output)
+
+	# Removing unnecessary memory-hungry columns
+	output$seq <- NULL
+	output$qual <- NULL
+	output$KM <- NULL
+	output$PV <- NULL
+	output$kmer <- NULL
+	output$kmer_rev <- NULL
+	output$kmer_pos_label <- NULL
 
 	# Adding a column for the -log10(p-value)
 	output$log10p <- -log10(output$pvalue)
@@ -163,7 +207,7 @@ format_gapit_gwas <- function(filename, ref_fasta, chromosomes, pattern = NULL) 
 	if(!is.null(pattern)) GenomeInfoDb::seqlevels(output) <- grep(pattern, GenomeInfoDb::seqlevels(output), value = TRUE)
 
 	# Adding a column for the -log10(corrected p-value) for downstream applications
-	output$log10p <- -log10(gapit_df$FDR_Adjusted_P.values)
+	output$log10p <- -log10(gapit_df$P.value)
 
 	# Returning the output
 	return(output)
