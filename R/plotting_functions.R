@@ -324,10 +324,10 @@ plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
 	return(invisible(NULL))
 }
 
-#' Plot the p-values of a GWAS analysis at a locus using grid functions
+#' A grob representing p-values of a GWAS analysis at a locus to plot using grid functions
 #'
-#' This function takes a data.frame of formatted GWAS results and plots
-#' the p-values in a given interval.
+#' This function takes a data.frame of formatted GWAS results and returns
+#' a gTree object representing a p-value plot in a given interval.
 #'
 #' @param gwas_results A GRanges object or data.frame of GWAS results.
 #'   If a data.frame, must include the columns manhattan_chrom and
@@ -350,13 +350,12 @@ plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
 #'   Values of 0 (the default) represent no expansion relative to the
 #'   values in x-scale.
 #'
-#' @return NULL, invisibly. This function is called for its plotting
-#'   side-effects.
+#' @return A gTree object that can be plotted with grid.draw() to display the p-values.
 #'
 #' @export
 #' @examples
 #' NULL
-pvalue_plot <- function(gwas_results, interval, feature = NULL,
+pvalue_grob <- function(gwas_results, interval, feature = NULL,
 			pvalue_margins  = c(5.1, 4.1 , 4.1, 2.1),
 			yexpand = c(0, 0)) {
 
@@ -384,55 +383,58 @@ pvalue_plot <- function(gwas_results, interval, feature = NULL,
 	}
 
 	# Creating a viewport with appropriate scales
-	grid::pushViewport(grid::plotViewport(margins = pvalue_margins,
+	pvalue_viewport <- grid::plotViewport(margins = pvalue_margins,
 					      xscale = c(GenomicRanges::start(interval),
 							 GenomicRanges::end(interval)),
-					      yscale = yscale))
+					      yscale = yscale)
 
-	# We need to go back up one viewport upon exiting the function
-	on.exit(upViewport(), add = TRUE)
+	# Creating the output gTree object to which grobs will be added
+	output_gtree <- grid::gTree(name = "pvalue_grob", vp = pvalue_viewport, cl = "pvalue")
 
 	# We plot a box around the viewport and an x-axis
-	grid::grid.rect()
-	grid::grid.xaxis()
-	grid::grid.text("Position along reference (bp)", y = grid::unit(-3, "lines"))
+	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob())
+	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob())
+	output_gtree <- grid::addGrob(output_gtree, grid::textGrob("Position along reference (bp)", y = grid::unit(-3, "lines")))
 
 	# Adding vertical lines with the location of the feature if provided
 	if(!is.null(feature)) {
-		grid::grid.lines(x = GenomicRanges::start(feature),
-				 y = grid::unit(c(0, 1), "npc"),
-				 default.units = "native",
-				 gp = grid::gpar(lty = 2))
+		output_gtree <- grid::addGrob(output_gtree,
+					      grid::linesGrob(x = GenomicRanges::start(feature),
+							      y = grid::unit(c(0, 1), "npc"),
+							      default.units = "native",
+							      gp = grid::gpar(lty = 2)))
 
-		grid::grid.lines(x = GenomicRanges::end(feature),
-				 y = grid::unit(c(0, 1), "npc"),
-				 default.units = "native",
-				 gp = grid::gpar(lty = 2))
+		output_gtree <- grid::addGrob(output_gtree,
+					      grid::linesGrob(x = GenomicRanges::end(feature),
+							      y = grid::unit(c(0, 1), "npc"),
+							      default.units = "native",
+							      gp = grid::gpar(lty = 2)))
 	}
-
 
 	# An empty GWAS dataset over the range needs to be handled in a special way
 	if(!length(gwas_results)) {
 		warning("No GWAS data in interval")
 
 		# Plotting some very basic features
-		grid::grid.text("No GWAS data in selected range")
+		output_gtree <- grid::addGrob(output_gtree, grid::textGrob("No GWAS data in selected range"))
 
 		# Returning from the function because the rest of the function should not be processed
-		return(invisible(NULL))
+		return(output_gtree)
 	}
 
 	# Then we can plot the data points
-	grid::grid.points(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
-			  y = grid::unit(gwas_results$log10p, "native"))
+	output_gtree <- grid::addGrob(output_gtree,
+				      grid::pointsGrob(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
+						       y = grid::unit(gwas_results$log10p, "native")))
 
-	# Adding x- and y-axis
-	grid::grid.yaxis()
+	# Adding a y-axis
+	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob())
 
 	# Adding the axis labels
-	grid::grid.text("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90)
+	output_gtree <- grid::addGrob(output_gtree,
+				      grid::textGrob("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90))
 
-	return(invisible(NULL))
+	return(output_gtree)
 }
 
 #' Plotting p-values along transcript model using grid functions
@@ -446,7 +448,7 @@ pvalue_plot <- function(gwas_results, interval, feature = NULL,
 #' x-axis values to match on both plots. The function will fail if
 #' this condition is not respected.
 #'
-#' @inheritParams pvalue_plot
+#' @inheritParams pvalue_grob
 #' @inheritParams plot_transcripts
 #' @param xscale A GRanges object used to restrict the plotting region.
 #'   Typically, it will be a GWAS signal or a gene known to be involved
@@ -501,7 +503,10 @@ pvalue_tx_plot <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 
 	# Plotting the p-values in the bottom viewport
 	grid::pushViewport(grid::viewport(layout.pos.row = 2))
-	pvalue_plot(gwas_results, interval = xscale, feature = feature, pvalue_margins = pvalue_margins, yexpand = yexpand)
+	grid::grid.draw(pvalue_grob(gwas_results, interval = xscale,
+				    feature = feature, 
+				    pvalue_margins = pvalue_margins,
+				    yexpand = yexpand))
 	grid::upViewport()
 
 	# Getting back up to the top viewport
