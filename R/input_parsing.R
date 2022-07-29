@@ -21,6 +21,10 @@
 #' @param min_mapq A numeric of length one. The minimum mapping quality
 #'   of the alignment on which the k-mer was found for it to be kept.
 #'   The default value (0) implies no filtering.
+#' @param min_count A numeric of length one. The minimum number of times
+#'   that a k-mer must have been observed at a given genomic position for
+#'   it to be considered for downstream analyses. The default value (0)
+#'   implies no filtering based on that parameter.
 #'
 #' @return A GRanges object that contains the information on matching
 #'   k-mers and can be used for downstream analyses including the
@@ -30,7 +34,7 @@
 #' @export
 #' @examples
 #' NULL
-format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0) {
+format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0, min_count = 0) {
 
 	# Reading the .fai index info
 	stopifnot(file.exists(paste0(ref_fasta, ".fai")))
@@ -121,6 +125,11 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0)
 	# We keep only the position at which a k-mer is most often observed
 	output <- output[order(output$kmer_canon, output$kmer_pos_count, decreasing = TRUE)]
 	output <- output[!duplicated(output$kmer_canon)]
+
+	# And we filter based on that count
+	output <- output[output$kmer_pos_count >= min_count]
+
+	# And reorder the output based on genomic coordinates
 	output <- sort(output)
 
 	# Removing unnecessary memory-hungry columns

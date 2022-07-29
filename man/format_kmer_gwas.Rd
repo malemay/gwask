@@ -4,7 +4,13 @@
 \alias{format_kmer_gwas}
 \title{Format k-mer GWAS results for downstream analyses}
 \usage{
-format_kmer_gwas(input_bam, ref_fasta, pattern = NULL, min_mapq = 0)
+format_kmer_gwas(
+  input_bam,
+  ref_fasta,
+  pattern = NULL,
+  min_mapq = 0,
+  min_count = 0
+)
 }
 \arguments{
 \item{input_bam}{A character. The path to an indexed .bam file that
@@ -26,6 +32,11 @@ being pruned. NO LONGER TRUE}
 \item{min_mapq}{A numeric of length one. The minimum mapping quality
 of the alignment on which the k-mer was found for it to be kept.
 The default value (0) implies no filtering.}
+
+\item{min_count}{A numeric of length one. The minimum number of times
+that a k-mer must have been observed at a given genomic position for
+it to be considered for downstream analyses. The default value (0)
+implies no filtering based on that parameter.}
 }
 \value{
 A GRanges object that contains the information on matching
