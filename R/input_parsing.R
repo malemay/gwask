@@ -79,10 +79,10 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0)
 	sam_df <- sam_df[!is.na(sam_df$rname) & !is.na(sam_df$pos),]
 
 	# The p-value is the highest (most significant) value of any k-mer found in the read
-	# We extract both the maximum p-value and the k-mer associated with it
-	max_pv <- sapply(strsplit(sam_df$PV, ","), function(x) which.max(as.numeric(x)))
-	sam_df$kmer <- mapply(function(x, y) x[y], strsplit(sam_df$KM, ","), max_pv)
-	sam_df$pvalue <- mapply(function(x, y) as.numeric(x[y]), strsplit(sam_df$PV, ","), max_pv)
+	# We extract both the minimum p-value and the k-mer associated with it
+	min_pv <- sapply(strsplit(sam_df$PV, ","), function(x) which.min(as.numeric(x)))
+	sam_df$kmer <- mapply(function(x, y) x[y], strsplit(sam_df$KM, ","), min_pv)
+	sam_df$pvalue <- mapply(function(x, y) as.numeric(x[y]), strsplit(sam_df$PV, ","), min_pv)
 
 	# Getting the position of the k-mer with the most significant value within the read
 	sam_df$kpos <- sam_df$pos + mapply(function(x, y) regexpr(x, y, fixed = TRUE), sam_df$kmer, sam_df$seq)
