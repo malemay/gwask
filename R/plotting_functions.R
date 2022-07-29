@@ -359,6 +359,7 @@ plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
 pvalue_plot <- function(gwas_results, interval, feature = NULL,
 			pvalue_margins  = c(5.1, 4.1 , 4.1, 2.1),
 			yexpand = c(0, 0)) {
+
 	if(!inherits(gwas_results, "GRanges")) {
 		gwas_results <- GenomicRanges::makeGRangesFromDataFrame(gwas_results,
 									keep.extra.columns = TRUE,
@@ -371,82 +372,67 @@ pvalue_plot <- function(gwas_results, interval, feature = NULL,
 	# We keep only the part of the gwas_results that overlaps the interval
 	gwas_results <- IRanges::subsetByOverlaps(gwas_results, interval)
 
-	# An empty GWAS dataset over the range needs to be handled in a special way
-	if(!length(gwas_results)) {
-		warning("No GWAS data in interval")
-
-		grid::pushViewport(grid::plotViewport(margins = pvalue_margins,
-						      xscale = c(GenomicRanges::start(interval),
-								 GenomicRanges::end(interval)),
-						      yscale = c(0, 1)))
-
-		# Plotting some very basic features
-		grid::grid.rect()
-		grid::grid.text("No GWAS data in selected range")
-		grid::grid.xaxis()
-		grid::grid.text("Position along reference (bp)", y = grid::unit(-3, "lines"))
-		grid::upViewport()
-
-		# Adding vertical lines with the location of the feature if provided
-		if(!is.null(feature)) {
-			grid.lines(x = GenomicRanges::start(feature),
-				   y = unit(c(0, 1), "npc"),
-				   default.units = "native",
-				   gp = gpar(lty = 2))
-
-			grid.lines(x = GenomicRanges::end(feature),
-				   y = unit(c(0, 1), "npc"),
-				   default.units = "native",
-				   gp = gpar(lty = 2))
-		}
-
-		# Returning from the function because the rest of the function should not be processed
-		return(invisible(NULL))
-		
+	# Setting the yscale depending on whether GWAS data is provided or not
+	if(length(gwas_results)) {
+		# Setting the yscale interval
+		stopifnot(length(yexpand) == 2)
+		yrange <- max(gwas_results$log10p) - min(gwas_results$log10p)
+		yscale <- c(min(gwas_results$log10p) - yexpand[1] * yrange,
+			    max(gwas_results$log10p) + yexpand[2] * yrange)
+	} else  {
+		yscale <- c(0, 1)
 	}
 
-	# Setting the yscale interval
-	stopifnot(length(yexpand) == 2)
-	yrange <- max(gwas_results$log10p) - min(gwas_results$log10p)
-	yscale <- c(min(gwas_results$log10p) - yexpand[1] * yrange,
-		    max(gwas_results$log10p) + yexpand[2] * yrange)
-
-	# Otherwise we can go on with the plotting by creating the viewport with appropriate scales
+	# Creating a viewport with appropriate scales
 	grid::pushViewport(grid::plotViewport(margins = pvalue_margins,
 					      xscale = c(GenomicRanges::start(interval),
 							 GenomicRanges::end(interval)),
 					      yscale = yscale))
 
-	# We plot a box around the viewport
-	grid.rect()
+	# We need to go back up one viewport upon exiting the function
+	on.exit(upViewport(), add = TRUE)
+
+	# We plot a box around the viewport and an x-axis
+	grid::grid.rect()
+	grid::grid.xaxis()
+	grid::grid.text("Position along reference (bp)", y = grid::unit(-3, "lines"))
+
+	# Adding vertical lines with the location of the feature if provided
+	if(!is.null(feature)) {
+		grid::grid.lines(x = GenomicRanges::start(feature),
+				 y = grid::unit(c(0, 1), "npc"),
+				 default.units = "native",
+				 gp = grid::gpar(lty = 2))
+
+		grid::grid.lines(x = GenomicRanges::end(feature),
+				 y = grid::unit(c(0, 1), "npc"),
+				 default.units = "native",
+				 gp = grid::gpar(lty = 2))
+	}
+
+
+	# An empty GWAS dataset over the range needs to be handled in a special way
+	if(!length(gwas_results)) {
+		warning("No GWAS data in interval")
+
+		# Plotting some very basic features
+		grid::grid.text("No GWAS data in selected range")
+
+		# Returning from the function because the rest of the function should not be processed
+		return(invisible(NULL))
+	}
 
 	# Then we can plot the data points
 	grid::grid.points(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
 			  y = grid::unit(gwas_results$log10p, "native"))
 
-	# Adding vertical lines with the location of the feature if provided
-	if(!is.null(feature)) {
-		grid.lines(x = GenomicRanges::start(feature),
-			   y = unit(c(0, 1), "npc"),
-			   default.units = "native",
-			   gp = gpar(lty = 2))
-
-		grid.lines(x = GenomicRanges::end(feature),
-			   y = unit(c(0, 1), "npc"),
-			   default.units = "native",
-			   gp = gpar(lty = 2))
-	}
-
 	# Adding x- and y-axis
-	grid.xaxis()
-	grid.yaxis()
+	grid::grid.yaxis()
 
 	# Adding the axis labels
-	grid.text("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90)
-	grid.text("Position along reference (bp)", y = grid::unit(-3, "lines"))
+	grid::grid.text("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90)
 
-	# Going back up one viewport to where we were before
-	grid::upViewport()
+	return(invisible(NULL))
 }
 
 #' Plotting p-values along transcript model using grid functions
