@@ -172,7 +172,7 @@ manhattan_plot <- function(formatted_data, gwas_type,
 #' viewport.
 #'
 #' The function will be typically called by the wrapper function
-#' \code{\link{plot_transcripts}} that will take care of organizing
+#' \code{\link{transcriptsGrob}} that will take care of organizing
 #' the viewports and coordinate scales for plotting all the transcripts
 #' of a given gene model.
 #'
@@ -182,13 +182,15 @@ manhattan_plot <- function(formatted_data, gwas_type,
 #'   to a single transcript.
 #' @param tx_name A GRanges object representing the coding sequences
 #'   belonging to a single transcript.
+#' @param output_vp A viewport that the transcript should be plotted in.
+#' @param name The name of the returned gTree object.
 #'
-#' @return A gList grob object representing a single transcript.
+#' @return A gTree object representing a single transcript.
 #'
 #' @export
 #' @examples
 #' NULL
-transcriptGrob <- function(tx_gene, tx_exons, tx_cds) {
+transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = NULL) {
 
 	# Drawing the line that goes from start to end of the gene
 	tx_line <- grid::linesGrob(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
@@ -215,14 +217,18 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds) {
 							       "orange")),
 				 name = "tx_cds")
 
-	return(gList(tx_line, tx_exons, tx_cds))
+	return(gTree(name = name,
+		     cl = "txgrob",
+		     children = gList(tx_line, tx_exons, tx_cds),
+		     vp = output_vp))
 }
 
-#' Plot all the possible transcripts for genes in a genomic region using grid functions
+#' Generate a grob of all the possible transcripts for genes in a genomic region using grid
 #'
-#' This function calls plot_transcript on all individual transcripts
-#' of the genes located in a given genomic region and plots each separately
-#' in a row of a viewport grid.
+#' This function calls transcriptGrob on all individual transcripts
+#' of the genes located in a given genomic region and organizes each separately
+#' in a row of a viewport grid. The object returned is a gTree that can be plotted
+#' with grid.draw().
 #'
 #' This function requires as input the full set of genes, transcripts,
 #' exons and coding sequences for the reference genome being used. It 
@@ -232,9 +238,9 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds) {
 #' It is also an error in the current implementation to try and plot
 #' over an interval that does not overlap any genes.
 #'
-#' The function itself does not plot any objects but instead arranges
-#' the viewport layout and moving between viewports, and calls the
-#' \code{\link{plot_transcript}} to plot the transcripts one by one.
+#' The function itself does not add any grobs by itself
+#' but instead arranges the viewport layout and calls the
+#' \code{\link{transcriptGrob}} to add the transcripts one by one.
 #' The latter is the function that should be modified for changing
 #' the way that plotted transcripts look.
 #'
@@ -263,17 +269,17 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds) {
 #'   and to subset the genes object such that only the ones located in the 
 #'   interval are plotted.
 #' @param transcript_margins A numeric of length 4 or that can be recycled to that
-#'   length. The margins used by the function \code{\link[grid]{plotViewport}}
+#'   length. The margins are used by the function \code{\link[grid]{plotViewport}}
 #'   to set the margins around the plotting region. By default it is set
 #'   to c(0, 4.1, 0, 2.1).
 #'
-#' @return NULL, invisibly. The function is called for its plotting
-#'   side-effect.
+#' @return A gTree with the proper viewports and grobs set for plotting all
+#'   transcripts in the provided genomic region.
 #'
 #' @export
 #' @examples
 #' NULL
-plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
+transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 			     transcript_margins = c(0, 4.1, 0, 2.1)) {
 
 	# Checking that the inputs are of the right type
@@ -298,8 +304,21 @@ plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
 	# The number of rows for the plotting viewports depends on the gene with the most transcripts
 	nrows <- max(lengths(transcripts))
 
-	# Pushing a viewport layout with as many rows as there are transcripts for the gene with the highest number of transcripts
-	grid::pushViewport(grid::plotViewport(margins = transcript_margins, layout = grid::grid.layout(nrow = nrows)))
+	# A viewport layout with as many rows as there are transcripts for the gene with the highest number of transcripts
+	main_viewport <- grid::plotViewport(margins = transcript_margins,
+					    layout = grid::grid.layout(nrow = nrows),
+					    name = "main")
+
+	# Creating all the row viewports
+	sub_viewports <- lapply(1:nrows, function(x) grid::viewport(layout.pos.row = x,
+								    xscale = c(GenomicRanges::start(xscale),
+									       GenomicRanges::end(xscale)),
+								    name = paste0("tx", x)))
+
+	# Creating a gTree that will contain all the transcripts to be plotted
+	output_gtree <- gTree(vp = main_viewport,
+			      childrenvp = do.call("vpList", sub_viewports),
+			      cl = "txxgrob")
 
 	# Iterating over the genes
 	for(gene_index in 1:length(genes)) {
@@ -310,22 +329,18 @@ plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
 		# Looping over all transcripts to plot them in separate viewports
 		for(i in 1:length(tnames)) {
 			tx_name <- tnames[i]
-			grid::pushViewport(grid::plotViewport(layout.pos.row = i,
-							      xscale = c(GenomicRanges::start(xscale),
-									 GenomicRanges::end(xscale))))
 
 			# Drawing a transcriptGrob for each transcript
-			grid::grid.draw(transcriptGrob(genes[gene_index], exons[[tx_name]], cds[[tx_name]]))
-
-			# Moving back to the parent viewport
-			grid::upViewport()
+			output_gtree <- grid::addGrob(output_gtree,
+						      transcriptGrob(genes[gene_index],
+								     exons[[tx_name]],
+								     cds[[tx_name]],
+								     name = paste0("gene", gene_index, "_tx", i),
+								     output_vp = vpPath(paste0("tx", i))))
 		}
 	}
 
-	# Going back to the viewport that we started from
-	grid::upViewport()
-
-	return(invisible(NULL))
+	return(output_gtree)
 }
 
 #' A grob representing p-values of a GWAS analysis at a locus to plot using grid functions
@@ -453,7 +468,7 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 #' this condition is not respected.
 #'
 #' @inheritParams pvalueGrob
-#' @inheritParams plot_transcripts
+#' @inheritParams transcriptsGrob
 #' @param xscale A GRanges object used to restrict the plotting region.
 #'   Typically, it will be a GWAS signal or a gene known to be involved
 #'   in the phenotype studied.
@@ -502,7 +517,7 @@ pvalue_tx_plot <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 
 	# Plotting the transcripts in the top viewport
 	grid::pushViewport(grid::viewport(layout.pos.row = 1))
-	plot_transcripts(genes, transcripts, exons, cds, xscale = xscale, transcript_margins = transcript_margins)
+	grid.draw(transcriptsGrob(genes, transcripts, exons, cds, xscale = xscale, transcript_margins = transcript_margins))
 	grid::upViewport()
 
 	# Plotting the p-values in the bottom viewport

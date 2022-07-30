@@ -62,7 +62,7 @@ values in x-scale. Limits will be rounded to the nearest integer
 because they need to be represented as a GRanges object.}
 
 \item{transcript_margins}{A numeric of length 4 or that can be recycled to that
-length. The margins used by the function \code{\link[grid]{plotViewport}}
+length. The margins are used by the function \code{\link[grid]{plotViewport}}
 to set the margins around the plotting region. By default it is set
 to c(0, 4.1, 0, 2.1).}
 

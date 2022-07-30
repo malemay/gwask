@@ -4,7 +4,7 @@
 \alias{transcriptGrob}
 \title{Generate a grob representing a transcript using grid functions}
 \usage{
-transcriptGrob(tx_gene, tx_exons, tx_cds)
+transcriptGrob(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = NULL)
 }
 \arguments{
 \item{tx_gene}{A GRanges object representing the coordinates of
@@ -13,11 +13,15 @@ of a single gene to which the transcript belongs.}
 \item{tx_exons}{A GRanges object representing the exons belonging
 to a single transcript.}
 
+\item{output_vp}{A viewport that the transcript should be plotted in.}
+
+\item{name}{The name of the returned gTree object.}
+
 \item{tx_name}{A GRanges object representing the coding sequences
 belonging to a single transcript.}
 }
 \value{
-A gList grob object representing a single transcript.
+A gTree object representing a single transcript.
 }
 \description{
 This function generates a grob of a transcript model using grid functions.
@@ -30,7 +34,7 @@ are used for centering the transcript models vertically in the
 viewport.
 
 The function will be typically called by the wrapper function
-\code{\link{plot_transcripts}} that will take care of organizing
+\code{\link{transcriptsGrob}} that will take care of organizing
 the viewports and coordinate scales for plotting all the transcripts
 of a given gene model.
 }
