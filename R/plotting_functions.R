@@ -161,11 +161,11 @@ manhattan_plot <- function(formatted_data, gwas_type,
 	return(output)
 }
 
-#' Plot a transcript using grid functions
+#' Generate a grob representing a transcript using grid functions
 #'
-#' This function plots a transcript model using grid functions.
+#' This function generates a grob of a transcript model using grid functions.
 #' 
-#' The function assumes that that plotting occurs in a viewport
+#' The function assumes that that the plotting will occur in a viewport
 #' with x-axis native coordinates already suitable for plotting that
 #' transcript. y-axis coordinates do not matter and "npc" coordinates
 #' are used for centering the transcript models vertically in the
@@ -183,35 +183,39 @@ manhattan_plot <- function(formatted_data, gwas_type,
 #' @param tx_name A GRanges object representing the coding sequences
 #'   belonging to a single transcript.
 #'
-#' @return NULL, invisibly. The function is invoked for its side
-#'   effect of plotting the transcript.
+#' @return A gList grob object representing a single transcript.
 #'
 #' @export
 #' @examples
 #' NULL
-plot_transcript <- function(tx_gene, tx_exons, tx_cds) {
+transcriptGrob <- function(tx_gene, tx_exons, tx_cds) {
 
 	# Drawing the line that goes from start to end of the gene
-	grid::grid.lines(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
-			 y = grid::unit(0.5, "npc"))
+	tx_line <- grid::linesGrob(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
+				   y = grid::unit(0.5, "npc"),
+				   name = "tx_line")
 
 	# Drawing the rectangles that correspond to exons
-	grid::grid.rect(x = grid::unit(GenomicRanges::start(tx_exons), "native"),
-			y = grid::unit(0.5, "npc"),
-			width = grid::unit(GenomicRanges::width(tx_exons), "native"),
-			height = grid::unit(0.8, "npc"),
-			hjust = 0,
-			gp = grid::gpar(fill = "white"))
+	tx_exons <- grid::rectGrob(x = grid::unit(GenomicRanges::start(tx_exons), "native"),
+				   y = grid::unit(0.5, "npc"),
+				   width = grid::unit(GenomicRanges::width(tx_exons), "native"),
+				   height = grid::unit(0.8, "npc"),
+				   hjust = 0,
+				   gp = grid::gpar(fill = "white"),
+				   name = "tx_exons")
 
 	# Doing the same thing for the coding sequences by using a shaded color
-	grid::grid.rect(x = grid::unit(GenomicRanges::start(tx_cds), "native"),
-			y = grid::unit(0.5, "npc"),
-			width = grid::unit(GenomicRanges::width(tx_cds), "native"),
-			height = grid::unit(0.8, "npc"),
-			hjust = 0,
-			gp = grid::gpar(fill = ifelse(as.character(GenomicRanges::strand(tx_cds)) == "+", "skyblue", "orange")))
+	tx_cds <- grid::rectGrob(x = grid::unit(GenomicRanges::start(tx_cds), "native"),
+				 y = grid::unit(0.5, "npc"),
+				 width = grid::unit(GenomicRanges::width(tx_cds), "native"),
+				 height = grid::unit(0.8, "npc"),
+				 hjust = 0,
+				 gp = grid::gpar(fill = ifelse(as.character(GenomicRanges::strand(tx_cds)) == "+",
+							       "skyblue", 
+							       "orange")),
+				 name = "tx_cds")
 
-	return(invisible(NULL))
+	return(gList(tx_line, tx_exons, tx_cds))
 }
 
 #' Plot all the possible transcripts for genes in a genomic region using grid functions
@@ -310,8 +314,8 @@ plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
 							      xscale = c(GenomicRanges::start(xscale),
 									 GenomicRanges::end(xscale))))
 
-			# Calling the plot_transcript function for each transcript
-			plot_transcript(genes[gene_index], exons[[tx_name]], cds[[tx_name]])
+			# Drawing a transcriptGrob for each transcript
+			grid::grid.draw(transcriptGrob(genes[gene_index], exons[[tx_name]], cds[[tx_name]]))
 
 			# Moving back to the parent viewport
 			grid::upViewport()
@@ -355,7 +359,7 @@ plot_transcripts <- function(genes, transcripts, exons, cds, xscale,
 #' @export
 #' @examples
 #' NULL
-pvalue_grob <- function(gwas_results, interval, feature = NULL,
+pvalueGrob <- function(gwas_results, interval, feature = NULL,
 			pvalue_margins  = c(5.1, 4.1 , 4.1, 2.1),
 			yexpand = c(0, 0)) {
 
@@ -389,7 +393,7 @@ pvalue_grob <- function(gwas_results, interval, feature = NULL,
 					      yscale = yscale)
 
 	# Creating the output gTree object to which grobs will be added
-	output_gtree <- grid::gTree(name = "pvalue_grob", vp = pvalue_viewport, cl = "pvalue")
+	output_gtree <- grid::gTree(name = "pvalueGrob", vp = pvalue_viewport, cl = "pvalue")
 
 	# We plot a box around the viewport and an x-axis
 	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob())
@@ -448,7 +452,7 @@ pvalue_grob <- function(gwas_results, interval, feature = NULL,
 #' x-axis values to match on both plots. The function will fail if
 #' this condition is not respected.
 #'
-#' @inheritParams pvalue_grob
+#' @inheritParams pvalueGrob
 #' @inheritParams plot_transcripts
 #' @param xscale A GRanges object used to restrict the plotting region.
 #'   Typically, it will be a GWAS signal or a gene known to be involved
@@ -503,10 +507,10 @@ pvalue_tx_plot <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 
 	# Plotting the p-values in the bottom viewport
 	grid::pushViewport(grid::viewport(layout.pos.row = 2))
-	grid::grid.draw(pvalue_grob(gwas_results, interval = xscale,
-				    feature = feature, 
-				    pvalue_margins = pvalue_margins,
-				    yexpand = yexpand))
+	grid::grid.draw(pvalueGrob(gwas_results, interval = xscale,
+				   feature = feature, 
+				   pvalue_margins = pvalue_margins,
+				   yexpand = yexpand))
 	grid::upViewport()
 
 	# Getting back up to the top viewport
