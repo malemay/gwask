@@ -485,7 +485,7 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 #'
 #' @examples
 #' NULL
-pvalue_tx_plot <- function(gwas_results, genes, transcripts, exons, cds, xscale,
+pvalue_tx_grob <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 			   feature = NULL,
 			   xexpand = c(0, 0),
 			   transcript_margins = c(0, 4.1, 0, 2.1),
@@ -513,24 +513,28 @@ pvalue_tx_plot <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 	}
 
 	# Preparing the layout of the plot
-	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 2, heights = grid::unit(c(0.2, 0.8), "npc"))))
+	main_viewport <- grid::viewport(layout = grid::grid.layout(nrow = 2, heights = grid::unit(c(0.2, 0.8), "npc")))
+
+	output_gtree <- grid::gTree(vp = main_viewport,
+				    childrenvp = vpList(grid::viewport(layout.pos.row = 1, name = "tx_vp"),
+							grid::viewport(layout.pos.row = 2, name = "pvalue_vp")))
 
 	# Plotting the transcripts in the top viewport
-	grid::pushViewport(grid::viewport(layout.pos.row = 1))
-	grid.draw(transcriptsGrob(genes, transcripts, exons, cds, xscale = xscale, transcript_margins = transcript_margins))
-	grid::upViewport()
+	tx_gtree <- grid::gTree(children = gList(transcriptsGrob(genes, transcripts, exons, cds,
+								 xscale = xscale,
+								 transcript_margins = transcript_margins)),
+				vp = "tx_vp")
 
 	# Plotting the p-values in the bottom viewport
-	grid::pushViewport(grid::viewport(layout.pos.row = 2))
-	grid::grid.draw(pvalueGrob(gwas_results, interval = xscale,
-				   feature = feature, 
-				   pvalue_margins = pvalue_margins,
-				   yexpand = yexpand))
-	grid::upViewport()
+	pvalue_gtree <- grid::gTree(children = gList(pvalueGrob(gwas_results, interval = xscale,
+								feature = feature, 
+								pvalue_margins = pvalue_margins,
+								yexpand = yexpand)),
+				    vp = "pvalue_vp")
 
-	# Getting back up to the top viewport
-	upViewport()
+	output_gtree <- addGrob(output_gtree, tx_gtree)
+	output_gtree <- addGrob(output_gtree, pvalue_gtree)
 
-	invisible(NULL)
+	return(output_gtree)
 }
 
