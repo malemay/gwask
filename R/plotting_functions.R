@@ -296,7 +296,11 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 
 	# Extracting the genes to plot from the xscale GRanges object
 	genes <- IRanges::subsetByOverlaps(genes, xscale)
-	if(!length(genes)) stop("No genes in the selected interval")
+
+	if(!length(genes)) {
+		warning("No genes in the selected interval")
+		return(gTree())
+	}
 
 	# Extracting the transcripts related to those genes
 	transcripts <- transcripts[names(genes)]
@@ -397,6 +401,8 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 		yrange <- max(gwas_results$log10p) - min(gwas_results$log10p)
 		yscale <- c(min(gwas_results$log10p) - yexpand[1] * yrange,
 			    max(gwas_results$log10p) + yexpand[2] * yrange)
+		# If the y-scale interval is only one marker, we set its minimum to 0
+		if(yscale[1] == yscale[2]) yscale[1] <- 0
 	} else  {
 		yscale <- c(0, 1)
 	}
