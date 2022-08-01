@@ -10,6 +10,7 @@ transcriptsGrob(
   exons,
   cds,
   xscale,
+  first_tx_only = FALSE,
   transcript_margins = c(0, 4.1, 0, 2.1)
 )
 }
@@ -37,6 +38,9 @@ element being the name of the transcript.}
 \item{xscale}{A GRanges object used to set the limits of the x-axis
 and to subset the genes object such that only the ones located in the 
 interval are plotted.}
+
+\item{first_tx_only}{A logical. Whether to plot only the first transcript
+of a given gene (default: FALSE).}
 
 \item{transcript_margins}{A numeric of length 4 or that can be recycled to that
 length. The margins are used by the function \code{\link[grid]{plotViewport}}

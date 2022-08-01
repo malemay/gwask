@@ -265,6 +265,8 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = N
 #'   in the reference genome being used. Each element of the list contains
 #'   the coding sequences for a particular transcript, with the name of the list
 #'   element being the name of the transcript.
+#' @param first_tx_only A logical. Whether to plot only the first transcript
+#'   of a given gene (default: FALSE).
 #' @param xscale A GRanges object used to set the limits of the x-axis
 #'   and to subset the genes object such that only the ones located in the 
 #'   interval are plotted.
@@ -280,7 +282,8 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = N
 #' @examples
 #' NULL
 transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
-			     transcript_margins = c(0, 4.1, 0, 2.1)) {
+			    first_tx_only = FALSE,
+			    transcript_margins = c(0, 4.1, 0, 2.1)) {
 
 	# Checking that the inputs are of the right type
 	stopifnot(inherits(genes, "GRanges"))
@@ -307,6 +310,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 
 	# The number of rows for the plotting viewports depends on the gene with the most transcripts
 	nrows <- max(lengths(transcripts))
+	if(first_tx_only) nrows <- 1
 
 	# A viewport layout with as many rows as there are transcripts for the gene with the highest number of transcripts
 	main_viewport <- grid::plotViewport(margins = transcript_margins,
@@ -329,6 +333,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 
 		# Getting the names of the transcripts of that gene
 		tnames <- transcripts[[ names(genes)[gene_index] ]]$tx_name
+		if(first_tx_only) tnames <- tnames[1]
 
 		# Looping over all transcripts to plot them in separate viewports
 		for(i in 1:length(tnames)) {
@@ -484,6 +489,8 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 #'   Values of 0 (the default) represent no expansion relative to the
 #'   values in x-scale. Limits will be rounded to the nearest integer
 #'   because they need to be represented as a GRanges object.
+#' @param pvalue_fraction A numeric value between 0 and 1. The proportion
+#'   of the plotting viewport reserved for the p-value grob. Default: 0.8.
 #'
 #' @return NULL, invisibly. The function is called for its side-effect of
 #'   plotting.
@@ -492,11 +499,13 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 #' @examples
 #' NULL
 pvalue_tx_grob <- function(gwas_results, genes, transcripts, exons, cds, xscale,
+			   first_tx_only = FALSE,
 			   feature = NULL,
 			   xexpand = c(0, 0),
 			   transcript_margins = c(0, 4.1, 0, 2.1),
 			   pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
-			   yexpand = c(0, 0)) {
+			   yexpand = c(0, 0),
+			   pvalue_fraction = 0.8) {
 
 	# Checking that the left and right margins of both plots are the same number
 	stopifnot(transcript_margins[2] == pvalue_margins[2] && transcript_margins[4] == pvalue_margins[4])
@@ -519,7 +528,7 @@ pvalue_tx_grob <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 	}
 
 	# Preparing the layout of the plot
-	main_viewport <- grid::viewport(layout = grid::grid.layout(nrow = 2, heights = grid::unit(c(0.2, 0.8), "npc")))
+	main_viewport <- grid::viewport(layout = grid::grid.layout(nrow = 2, heights = grid::unit(c(1, pvalue_fraction), c("null", "npc"))))
 
 	output_gtree <- grid::gTree(vp = main_viewport,
 				    childrenvp = vpList(grid::viewport(layout.pos.row = 1, name = "tx_vp"),
@@ -527,6 +536,7 @@ pvalue_tx_grob <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 
 	# Plotting the transcripts in the top viewport
 	tx_gtree <- grid::gTree(children = gList(transcriptsGrob(genes, transcripts, exons, cds,
+								 first_tx_only = first_tx_only,
 								 xscale = xscale,
 								 transcript_margins = transcript_margins)),
 				vp = "tx_vp")

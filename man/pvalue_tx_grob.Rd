@@ -11,11 +11,13 @@ pvalue_tx_grob(
   exons,
   cds,
   xscale,
+  first_tx_only = FALSE,
   feature = NULL,
   xexpand = c(0, 0),
   transcript_margins = c(0, 4.1, 0, 2.1),
   pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
-  yexpand = c(0, 0)
+  yexpand = c(0, 0),
+  pvalue_fraction = 0.8
 )
 }
 \arguments{
@@ -49,6 +51,9 @@ element being the name of the transcript.}
 Typically, it will be a GWAS signal or a gene known to be involved
 in the phenotype studied.}
 
+\item{first_tx_only}{A logical. Whether to plot only the first transcript
+of a given gene (default: FALSE).}
+
 \item{feature}{A GRanges object indicating the position of a feature of
 interest to mark with vertical dotted lines. Both the start and end of
 the feature will be indicated with a line. If NULL (default), then no
@@ -76,6 +81,9 @@ of y-scale limits. The first value is the expansion factor to
 the top while the second value is the expansion factor to the bottom.
 Values of 0 (the default) represent no expansion relative to the
 values in x-scale.}
+
+\item{pvalue_fraction}{A numeric value between 0 and 1. The proportion
+of the plotting viewport reserved for the p-value grob. Default: 0.8.}
 }
 \value{
 NULL, invisibly. The function is called for its side-effect of
