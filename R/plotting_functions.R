@@ -518,7 +518,8 @@ pvalue_tx_grob <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 
 	# Checking if the feature (if provided) overlaps the xscale
 	if(!is.null(feature) && !overlapsAny(feature, xscale)) {
-		stop("The feature parameter must overlap xscale")
+		warning("The feature parameter does not overlap xscale; setting feature to NULL")
+		feature = NULL
 	}
 	
 	if(!all(xexpand == 0)) {
