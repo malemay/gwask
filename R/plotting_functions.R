@@ -1,164 +1,133 @@
-#' manhattan_plot
+#' A function that returns a graphical object (grob) representing a manhattan plot
 #' 
-#' @param formatted_data A GRanges object formatted with either \code{\link{format_kmer_gwas}}
-#'   or \code{\link{format_gapit_gwas}} depending on the GWAS type. These functions
+#' @param gwas_results A GRanges object formatted with either \code{\link{format_kmer_gwas}}
+#'   or \code{\link{format_gapit_gwas}}. These functions
 #'   return GRanges containing standard columns and seqinfo in addition to GWAS type-specific
 #'   columns, therefore allowing a common interface for all GWAS types.
-#' @param gwas_type A character of length one. Only two options are supported at
-#'   this time, either \code{"kmer"} for k-mer GWAS as implemented by Voichek
-#'   and Weigel (2020) or \code{"gapit"} for the output of GAPIT.
-#' @param signals A data.frame with the coordinates of GWAS signals to 
-#'   show on the plot. If \code{NULL} (the default) or \code{nrow(signals)} < 0,
-#'   then no signals are plotted. If supplied, the data.frame must minimally
-#'   contain the following columns:
-#'   \itemize{
-#'     \item  first_chrom: the chromosome where the leftmost position is found
-#'     \item  first_pos: the coordinate on first_chrom where the leftmost significant marker occurs
-#'     \item  last_chrom: the chromosome where the rightmost position is found
-#'     \item  last_pos: the coordinate on last_chrom where the rightmost significant marker occurs
-#'     \item  max_chrom: the chromosome where the marker with the most significant p-value occurds
-#'     \item  max_pos: the coordinate on max_chrom where the most significant marker occurs
-#'   }
-#'   Supplying this data.frame in itself only results in a vertical line being
-#'   drawn at the location of each signal. If, in addition, \code{extent = TRUE},
-#'   then the extent of the signal (from the first to the last position along
-#'   the chromosome) is also plotted as a rectangle.
-#' @param extent Logical. Whether or not to plot the extent of the signals
-#'   as a rectangle. Can only be \code{TRUE} if signals is not \code{NULL}.
-#' @param single_panel Logical. Whether all chromosomes should be plotted in
-#'   a single panel (the default) or \code{\link[ggplot]{facet_wrap}} should
-#'   be used to plot each chromosome in a separate panel.
 #' @param threshold Numeric. A single value indicating where the -log10(p-value)
 #'   threshold line should be plotted.
 #' @param min_log10p Numeric. The minimum -log10(p-value) to display on the plot
 #'   can be used to filter out some non-significant markers for plotting speedup.
-#' @param plot_mapq Logical. Whether to plot the mapping quality (MAPQ) as the
-#'   color aesthetic (when provided as k-mers data).
+#' @param numeric_chrom Logical. Whether chromosome names should be stripped from
+#'   their alphabetical component and converted to numeric values (default: FALSE).
+#' @param yexpand A numeric of length two. A fractional value relative to the
+#'   range of the y-axis used to expand the y-scale on either side. The first
+#'   value is the expansion factor at the bottom of the scale, and the second
+#'   value is the expansion factor at the top of the scale.
+#' @param xexpand Same as yexpand but for the x-scale.
+#' @param cex.points A numeric value. The expansion factor for the points.
+#' @param cex.lab A numeric value. The expansion factor for the axis labels.
+#' @param margins The margins used for the plotting viewport. Default value
+#'   is c(5.1, 4.1, 4.1, 2.1) (the default for \code{\link[grid]{plotViewport}})
 #'
-#' @return A ggplot object describing a Manhattan plot with the specified parameters.
+#' @return A gTree describing a Manhattan plot with the specified parameters.
 #'
 #' @export
 #' @examples
 #' NULL
-manhattan_plot <- function(formatted_data, gwas_type,
-			   signals = NULL, extent = FALSE, single_panel = TRUE,
-			   threshold = NULL, min_log10p = 0, plot_mapq = FALSE) {
+manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
+			  numeric_chrom = FALSE,
+			  yexpand = c(0.03, 0.08), xexpand = c(0.03, 0.03),
+			  cex.points = 0.5, cex.lab = 1,
+			  margins = c(5.1, 4.1, 4.1, 2.1)) {
 
-	# Sanity checks -------------------------------------
+	# Checking that gwas_results has the right format
+	if(!"log10p" %in% names(GenomicRanges::mcols(gwas_results))) stop("The required log10p column is missing from gwas_results.")
 
-	# Checking that formatted_data has the right format
-	if(!"log10p" %in% names(mcols(formatted_data))) {
-		stop("The formatted_data object does not satisfy format requirements.")
-	}
+	stopifnot(length(yexpand) == 2)
+	stopifnot(length(xexpand) == 2)
 
-	# Checking that gwas_type is supported
-	if(!gwas_type %in% c("kmer", "gapit")) {
-		stop("gwas_type ", gwas_type, " is not supported.")
-	}
+	# Using the seqinfo of the gwas_results input to compute various information
+	chrom_lengths <- GenomeInfoDb::seqlengths(gwas_results)
 
-	# Checking that the MAPQ column is suppled if type == kmer
-	if(gwas_type == "kmer" && ! "mapq" %in% names(mcols(formatted_data))) {
-		stop("mapq column must be present in formatted_data for gwas_type = \"kmer\"")
-	}
-
-	# Checking that signals has the right format (if supplied)
-	if(!is.null(signals) && !all(c("first_chrom", "first_pos", "last_chrom", "last_pos", "max_chrom", "max_pos") %in% names(signals))) {
-		stop("The signals data.frame does not satisfy format requirements.")
-	}
-
-	# Checking that extent is TRUE only if signals is supplied
-	if(is.null(signals) && extent) {
-		stop("extent can only be TRUE if signals is not NULL")	
-	}
-
-	# Check that mapq is only TRUE if the MAPQ column actually exists
-	if(plot_mapq && ! "MAPQ" %in% names(mcols(formatted_data))) {
-		warning("plot_mapq = TRUE but \"MAPQ\" is not among the columns. Setting plot_mapq to FALSE")
-		plot_mapq <- FALSE
-	}
-
-	# End of sanity checks ------------------------------
-
-	# Using the seqinfo of the formatted_data input to compute various information
-	chrom_lengths <- GenomeInfoDb::seqlengths(formatted_data)
-
+	# A vector of the starting positions of chromosomes on a linear scale
 	chrom_start <- cumsum(chrom_lengths)
-	chrom_start <- c(0, chrom_start[-(length(chrom_start))])
+	chrom_start <- c(0, chrom_start[-(length(chrom_start))]) + 1
 
+	# A vector of the positions where the x-axis labels should be drawn on a linear scale
 	label_pos <- chrom_start + 0.5 * chrom_lengths
 
 	# All vectors have the names of the sequences to allow lookup of the info by name
-	names(chrom_start) <- names(chrom_lengths)  <- names(label_pos) <- GenomeInfoDb::seqlevels(formatted_data)
+	names(chrom_start) <- names(chrom_lengths) <- names(label_pos) <- GenomeInfoDb::seqlevels(gwas_results)
 
-	# Computing the absolute position on the genome
-	formatted_data$manhattan_rpos <- GenomicRanges::start(formatted_data) + chrom_start[as.character(GenomicRanges::seqnames(formatted_data))]
+	# Computing the absolute position on the genome as the median between start and end pos
+	gwas_results$manhattan_rpos <- (GenomicRanges::start(gwas_results) + GenomicRanges::end(gwas_results)) / 2 +
+		chrom_start[as.character(GenomicRanges::seqnames(gwas_results))]
 
-	# Computing whether this chromsome is even or odd (for plotting purposes)
-	even_chromosomes <- GenomeInfoDb::seqlevels(formatted_data)[c(FALSE, TRUE)]
-	formatted_data$manhattan_even <- as.character(GenomicRanges::seqnames(formatted_data)) %in% even_chromosomes
-
-	# Issuing a warning until this functionality is restored
-	warning("signals functionality in manhattan_plot() not functional")
-
-	# Formatting the signals data for plotting (the signals format should be redesigned)
-	if(!is.null(signals) && nrow(signals)) {
-		signals$first_plot <- fai_info$start[signals$first_chrom] + signals$first_pos
-		signals$last_plot <- fai_info$start[signals$last_chrom] + signals$last_pos
-		signals$max_plot <- fai_info$start[signals$max_chrom] + signals$max_pos
-		# For compatibility with facet_wrap when extent = TRUE
-		signals$manhattan_chrom <- signals$first_chrom
-	}
+	# Computing whether the chromosome chromsome is even or odd (for plotting purposes)
+	even_chromosomes <- GenomeInfoDb::seqlevels(gwas_results)[c(FALSE, TRUE)]
+	gwas_results$manhattan_even <- as.character(GenomicRanges::seqnames(gwas_results)) %in% even_chromosomes
 
 	# Removing the associations that are less significant than min_log10p
-	if(min_log10p > 0) {
-		formatted_data <- formatted_data[formatted_data$log10p >= min_log10p]
-	}
+	if(min_log10p > 0) gwas_results <- gwas_results[gwas_results$log10p >= min_log10p]
 
-	# If single_panel is TRUE, then all the data is plotted along a single axis
-	if(single_panel) {
-		output <- ggplot2::ggplot(as.data.frame(formatted_data)) +
-			ggplot2::geom_point(mapping = ggplot2::aes_string(x = "manhattan_rpos",
-									  y = "log10p",
-									  color = ifelse(plot_mapq, "MAPQ", "manhattan_even"))) +
-				ggplot2::scale_x_continuous(name = "Chromosome",
-							    breaks = label_pos,
-							    labels = names(label_pos),
-							    limits = c(0, sum(chrom_lengths))) +
-				ggplot2::ylab("-log10(p-value)") +
-				ggplot2::theme_bw() +
-				ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+	# Setting the plotting scales
+	if(length(gwas_results)) {
+		yscale <- c(0, max(gwas_results$log10p, threshold))
 
-
-	} else {
-	# If single_panel is not TRUE, there is one panel per chromosome
-		output <- ggplot2::ggplot(formatted_data) +
-			ggplot2::geom_point(mapping = ggplot2::aes_string(x = "start",
-									  y = "log10p")) +
-			ggplot2::facet_wrap(~seqnames, ncol = 5) +
-			ggplot2::scale_x_continuous(name = "Position (bp)") +
-			ggplot2::ylab("-log10(p-value)") +
-			ggplot2::theme_bw() +
-			ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
-	}
-
-	if(!is.null(signals) && nrow(signals)) {
-		output <- output + ggplot2::geom_vline(data = signals, aes(xintercept = max_plot), linetype = 2)
-
-		if(extent) {
-			output <- output + ggplot2::geom_rect(data = signals,
-							      ymin = 0, ymax = max(formatted_data$log10p),
-							      ggplot2::aes(xmin = first_pos, xmax = last_pos),
-							      color = "red", alpha = 0.4)
+		if(!all(yexpand == 0)) {
+			yrange <- diff(yscale)
+			yscale[1] <- yscale[1] - yexpand[1] * yrange
+			yscale[2] <- yscale[2] + yexpand[2] * yrange
 		}
+	} else {
+		yscale <- c(0, threshold + 1)
 	}
 
-	# Unless plot_mapq is TRUE, we do not need the color scale
-	if(!plot_mapq) output <- output + ggplot2::guides(color = "none")
+	xscale <- c(0, sum(chrom_lengths))
+
+	if(!all(xexpand == 0)) {
+		xrange <- diff(xscale)
+		xscale[1] <- xscale[1] - xexpand[1] * xrange
+		xscale[2] <- xscale[2] + xexpand[2] * xrange
+	}
+
+	# Initializing the output gTree object
+	output_gtree <- grid::gTree(vp = grid::plotViewport(margins = margins,
+							    xscale = xscale,
+							    yscale = yscale,
+							    name = "manhattan_vp"),
+				    name = "manhattan")
+
+	# Adding a box around the viewport
+	output_gtree <- grid::addGrob(output_gtree, rectGrob(name = "manahttan_box"))
+
+	# Adding the points
+	if(length(gwas_results)) {
+		output_gtree <- grid::addGrob(output_gtree,
+					      grid::pointsGrob(x = gwas_results$manhattan_rpos,
+							       y = gwas_results$log10p,
+							       pch = 20,
+							       gp = grid::gpar(cex = cex.points, col = ifelse(gwas_results$manhattan_even, "red", "blue")),
+							       name = "manhattan_points"))
+	}
+
+	# Adding the x-axis
+	output_gtree <- grid::addGrob(output_gtree,
+				      grid::xaxisGrob(at = label_pos,
+						      label = if(numeric_chrom) as.character(as.numeric(gsub("[a-zA-Z]", "", names(label_pos)))) else names(label_pos),
+						      gp = gpar(cex = cex.lab),
+						      name = "manhattan_xaxis"))
+
+	# Adding the x-axis label
+	output_gtree <- grid::addGrob(output_gtree, grid::textGrob("Chromosome", y = grid::unit(-3, "lines"), name = "manhattan_xlabel"))
+
+	# Adding the y-axis
+	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob(gp = gpar(cex = cex.lab), name = "manhattan_yaxis"))
+
+	# Adding the x-axis label
+	output_gtree <- grid::addGrob(output_gtree, grid::textGrob("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90, name = "manhattan_ylabel"))
 
 	# Also adding the threshold if not NULL
-	if(!is.null(threshold)) output <- output + ggplot2::geom_hline(yintercept = threshold, linetype = 2)
+	if(!is.null(threshold)) {
+		output_gtree <- grid::addGrob(output_gtree,
+					      grid::linesGrob(x = c(0, 1),
+							      y = unit(threshold, "native"),
+							      gp = gpar(lty = "13"),
+							      name = "manhattan_threshold"))
+	}
 
-	return(output)
+	return(output_gtree)
 }
 
 #' Generate a grob representing a transcript using grid functions
