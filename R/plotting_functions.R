@@ -395,6 +395,12 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	# We keep only the part of the gwas_results that overlaps the interval
 	gwas_results <- IRanges::subsetByOverlaps(gwas_results, interval)
 
+	# Checking if the feature (if provided) overlaps the interval
+	if(!is.null(feature) && !overlapsAny(feature, interval)) {
+		warning("The feature parameter does not overlap the plotting interval; setting feature to NULL")
+		feature <- NULL
+	}
+
 	# Setting the yscale depending on whether GWAS data is provided or not
 	if(length(gwas_results)) {
 		# Setting the yscale interval
@@ -512,12 +518,6 @@ pvalue_tx_grob <- function(gwas_results, genes, transcripts, exons, cds, xscale,
 	# Expanding the xscale (if applicable)
 	stopifnot(length(xexpand) == 2)
 
-	# Checking if the feature (if provided) overlaps the xscale
-	if(!is.null(feature) && !overlapsAny(feature, xscale)) {
-		warning("The feature parameter does not overlap xscale; setting feature to NULL")
-		feature = NULL
-	}
-	
 	if(!all(xexpand == 0)) {
 		range_width <- GenomicRanges::width(xscale)
 		GenomicRanges::start(xscale) <- round(GenomicRanges::start(xscale) - xexpand[1] * range_width)
