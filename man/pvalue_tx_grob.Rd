@@ -2,30 +2,33 @@
 % Please edit documentation in R/plotting_functions.R
 \name{pvalue_tx_grob}
 \alias{pvalue_tx_grob}
-\title{Plotting p-values along transcript model using grid functions}
+\title{Arrange a transcript grob and several p-value grobs in the same plot}
 \usage{
 pvalue_tx_grob(
-  gwas_results,
+  pvalue_grobs,
+  xrange = NULL,
+  xchrom = NULL,
   genes,
   transcripts,
   exons,
   cds,
-  xscale,
   first_tx_only = FALSE,
-  feature = NULL,
-  xexpand = c(0, 0),
-  transcript_margins = c(0, 4.1, 0, 2.1),
-  pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
-  yexpand = c(0, 0),
-  pvalue_fraction = 0.8
+  tx_fraction = 0.1,
+  margins = c(5.1, 4.1, 4.1, 2.1)
 )
 }
 \arguments{
-\item{gwas_results}{A GRanges object or data.frame of GWAS results.
-If a data.frame, must include the columns manhattan_chrom and
-manhattan_cpos for coercion to a GRanges. The metadata column
-log10p must be present as it will be used to plot the
-p-values on the y-axis.}
+\item{pvalue_grobs}{A list of p-value grobs that will be arrange in
+viewport rows}
+
+\item{xrange}{A GRanges object used to restrict the plotting region.
+Typically, it will be a GWAS signal or a gene known to be involved
+in the phenotype studied. If NULL (default), the scale is set automatically
+to encompass all the values provided in the pvalue_grobs.}
+
+\item{xchrom}{A character of length one indicating what chromosome is being
+plotted. This parameter must be passed if xrange is NULL in order for
+the GRanges object to use for subsetting genes to be set.}
 
 \item{genes}{A GRanges object containing the known genes for the
 reference genome being studied, as obtained from processing
@@ -47,58 +50,21 @@ in the reference genome being used. Each element of the list contains
 the coding sequences for a particular transcript, with the name of the list
 element being the name of the transcript.}
 
-\item{xscale}{A GRanges object used to restrict the plotting region.
-Typically, it will be a GWAS signal or a gene known to be involved
-in the phenotype studied.}
-
 \item{first_tx_only}{A logical. Whether to plot only the first transcript
 of a given gene (default: FALSE).}
 
-\item{feature}{A GRanges object indicating the position of a feature of
-interest to mark with vertical dotted lines. Both the start and end of
-the feature will be indicated with a line. If NULL (default), then no
-lines are drawn.}
+\item{tx_fraction}{A numeric value between 0 and 1 representing the
+proportion of the plot reserved for plotting the transcript(s).}
 
-\item{xexpand}{A numeric of length 2 representing expansion factors
-of x-scale limits. The first value is the expansion factor to
-the left while the second value is the expansion factor to the right.
-Values of 0 (the default) represent no expansion relative to the
-values in x-scale. Limits will be rounded to the nearest integer
-because they need to be represented as a GRanges object.}
-
-\item{transcript_margins}{A numeric of length 4 or that can be recycled to that
-length. The margins are used by the function \code{\link[grid]{plotViewport}}
-to set the margins around the plotting region. By default it is set
-to c(0, 4.1, 0, 2.1).}
-
-\item{pvalue_margins}{A numeric of length 4 or that can be recycled to that
-length. The margins used by the function \code{\link[grid]{plotViewport}}
-to set the margins around the plotting region. By default it is set
-to c(5.1, 4.1, 4.1, 2.1).}
-
-\item{yexpand}{A numeric of length 2 representing expansion factors
-of y-scale limits. The first value is the expansion factor to
-the top while the second value is the expansion factor to the bottom.
-Values of 0 (the default) represent no expansion relative to the
-values in x-scale.}
-
-\item{pvalue_fraction}{A numeric value between 0 and 1. The proportion
-of the plotting viewport reserved for the p-value grob. Default: 0.8.}
+\item{margins}{The margins used for the plotting viewport. Default value
+is c(5.1, 4.1, 4.1, 2.1) (the default for \code{\link[grid]{plotViewport}})}
 }
 \value{
 NULL, invisibly. The function is called for its side-effect of
   plotting.
 }
 \description{
-This function plots the p-values observed along the genome in
-the bottom panel and a model of the transcripts for genes in the
-region in the top panel.
-}
-\details{
-The margins of the transcript and p-value plots are set separately
-but the left and right margins of each must align in order for the
-x-axis values to match on both plots. The function will fail if
-this condition is not respected.
+Arrange a transcript grob and several p-value grobs in the same plot
 }
 \examples{
 NULL

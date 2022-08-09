@@ -266,10 +266,6 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = N
 #' @param xscale A GRanges object used to set the limits of the x-axis
 #'   and to subset the genes object such that only the ones located in the 
 #'   interval are plotted.
-#' @param transcript_margins A numeric of length 4 or that can be recycled to that
-#'   length. The margins are used by the function \code{\link[grid]{plotViewport}}
-#'   to set the margins around the plotting region. By default it is set
-#'   to c(0, 4.1, 0, 2.1).
 #'
 #' @return A gTree with the proper viewports and grobs set for plotting all
 #'   transcripts in the provided genomic region.
@@ -278,8 +274,7 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = N
 #' @examples
 #' NULL
 transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
-			    first_tx_only = FALSE,
-			    transcript_margins = c(0, 4.1, 0, 2.1)) {
+			    first_tx_only = FALSE) {
 
 	# Checking that the inputs are of the right type
 	stopifnot(inherits(genes, "GRanges"))
@@ -309,9 +304,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 	if(first_tx_only) nrows <- 1
 
 	# A viewport layout with as many rows as there are transcripts for the gene with the highest number of transcripts
-	main_viewport <- grid::plotViewport(margins = transcript_margins,
-					    layout = grid::grid.layout(nrow = nrows),
-					    name = "main")
+	main_viewport <- grid::viewport(layout = grid::grid.layout(nrow = nrows), name = "main")
 
 	# Creating all the row viewports
 	sub_viewports <- lapply(1:nrows, function(x) grid::viewport(layout.pos.row = x,
@@ -345,6 +338,10 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 		}
 	}
 
+	# Adding a rectGrob and xaxisGrob to the gTree in order to visualize the limits of the viewport
+	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob(gp = gpar(fill = NA)))
+	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob(vp = paste0("tx", nrows)))
+
 	return(output_gtree)
 }
 
@@ -364,10 +361,6 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #'  interest to mark with vertical dotted lines. Both the start and end of
 #'  the feature will be indicated with a line. If NULL (default), then no
 #'  lines are drawn.
-#' @param pvalue_margins A numeric of length 4 or that can be recycled to that
-#'   length. The margins used by the function \code{\link[grid]{plotViewport}}
-#'   to set the margins around the plotting region. By default it is set
-#'   to c(5.1, 4.1, 4.1, 2.1).
 #' @param yexpand A numeric of length 2 representing expansion factors
 #'   of y-scale limits. The first value is the expansion factor to
 #'   the top while the second value is the expansion factor to the bottom.
@@ -380,8 +373,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #' @examples
 #' NULL
 pvalueGrob <- function(gwas_results, interval, feature = NULL,
-			pvalue_margins  = c(5.1, 4.1 , 4.1, 2.1),
-			yexpand = c(0, 0)) {
+		       yexpand = c(0, 0)) {
 
 	if(!inherits(gwas_results, "GRanges")) {
 		gwas_results <- GenomicRanges::makeGRangesFromDataFrame(gwas_results,
@@ -415,10 +407,9 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	}
 
 	# Creating a viewport with appropriate scales
-	pvalue_viewport <- grid::plotViewport(margins = pvalue_margins,
-					      xscale = c(GenomicRanges::start(interval),
-							 GenomicRanges::end(interval)),
-					      yscale = yscale)
+	pvalue_viewport <- grid::viewport(xscale = c(GenomicRanges::start(interval),
+						     GenomicRanges::end(interval)),
+					  yscale = yscale)
 
 	# Creating the output gTree object to which grobs will be added
 	output_gtree <- grid::gTree(name = "pvalueGrob", vp = pvalue_viewport, cl = "pvalue")
@@ -469,30 +460,22 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	return(output_gtree)
 }
 
-#' Plotting p-values along transcript model using grid functions
+#' Arrange a transcript grob and several p-value grobs in the same plot
 #'
-#' This function plots the p-values observed along the genome in
-#' the bottom panel and a model of the transcripts for genes in the
-#' region in the top panel.
-#'
-#' The margins of the transcript and p-value plots are set separately
-#' but the left and right margins of each must align in order for the
-#' x-axis values to match on both plots. The function will fail if
-#' this condition is not respected.
-#'
-#' @inheritParams pvalueGrob
 #' @inheritParams transcriptsGrob
-#' @param xscale A GRanges object used to restrict the plotting region.
+#' @param pvalue_grobs A list of p-value grobs that will be arrange in
+#'   viewport rows
+#' @param xrange A GRanges object used to restrict the plotting region.
 #'   Typically, it will be a GWAS signal or a gene known to be involved
-#'   in the phenotype studied.
-#' @param xexpand A numeric of length 2 representing expansion factors
-#'   of x-scale limits. The first value is the expansion factor to
-#'   the left while the second value is the expansion factor to the right.
-#'   Values of 0 (the default) represent no expansion relative to the
-#'   values in x-scale. Limits will be rounded to the nearest integer
-#'   because they need to be represented as a GRanges object.
-#' @param pvalue_fraction A numeric value between 0 and 1. The proportion
-#'   of the plotting viewport reserved for the p-value grob. Default: 0.8.
+#'   in the phenotype studied. If NULL (default), the scale is set automatically
+#'   to encompass all the values provided in the pvalue_grobs.
+#' @param xchrom A character of length one indicating what chromosome is being
+#'   plotted. This parameter must be passed if xrange is NULL in order for
+#'   the GRanges object to use for subsetting genes to be set.
+#' @param tx_fraction A numeric value between 0 and 1 representing the
+#'   proportion of the plot reserved for plotting the transcript(s).
+#' @param margins The margins used for the plotting viewport. Default value
+#'   is c(5.1, 4.1, 4.1, 2.1) (the default for \code{\link[grid]{plotViewport}})
 #'
 #' @return NULL, invisibly. The function is called for its side-effect of
 #'   plotting.
@@ -500,53 +483,73 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 #'
 #' @examples
 #' NULL
-pvalue_tx_grob <- function(gwas_results, genes, transcripts, exons, cds, xscale,
-			   first_tx_only = FALSE,
-			   feature = NULL,
-			   xexpand = c(0, 0),
-			   transcript_margins = c(0, 4.1, 0, 2.1),
-			   pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
-			   yexpand = c(0, 0),
-			   pvalue_fraction = 0.8) {
+pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
+			   genes, transcripts, exons, cds,
+			   first_tx_only = FALSE, tx_fraction = 0.1,
+			   margins = c(5.1, 4.1, 4.1, 2.1)) {
 
-	# Checking that the left and right margins of both plots are the same number
-	stopifnot(transcript_margins[2] == pvalue_margins[2] && transcript_margins[4] == pvalue_margins[4])
+	# Setting xrange and xscale for plotting
+	if(is.null(xrange)) {
+		if(is.null(xchrom) || !(length(xchrom) == 1)) stop("xchrom must be set to generate the GRanges objcet for subsetting genes")
 
-	# Checking that the xscale is a single range
-	stopifnot(length(xscale) == 1)
+		# Computing the	limits of the viewport from the limits of those in the pvalue grobs
+		vp_x <- unlist(lapply(pvalue_grobs, function(x) x$vp$xscale))
 
-	# Expanding the xscale (if applicable)
-	stopifnot(length(xexpand) == 2)
+		if(!is.null(vp_x)) {
+			xscale <- range(vp_x)
+			xrange <- GenomicRanges::GRanges(seqnames = xchrom,
+							 ranges = IRanges::IRanges(start = xscale[1], end = xscale[2]))
 
-	if(!all(xexpand == 0)) {
-		range_width <- GenomicRanges::width(xscale)
-		GenomicRanges::start(xscale) <- round(GenomicRanges::start(xscale) - xexpand[1] * range_width)
-		GenomicRanges::end(xscale) <- round(GenomicRanges::end(xscale) + xexpand[2] * range_width)
+			# Editing the x-scales of the viewports underlying pvalue_grobs so they are plotted with update coordinates
+			for(i in 1:length(pvalue_grobs)) {
+				if(!is.null(pvalue_grobs[[i]]$vp)) pvalue_grobs[[i]]$vp <- grid::editViewport(pvalue_grobs[[i]]$vp, xscale = xscale)
+			}
+
+		} else {	
+			xrange <- NULL
+		}
+
+	} else {
+		if(!is.null(xchrom)) warning("xchrom parameter ignored as xrange was set")
 	}
 
 	# Preparing the layout of the plot
-	main_viewport <- grid::viewport(layout = grid::grid.layout(nrow = 2, heights = grid::unit(c(1, pvalue_fraction), c("null", "npc"))))
+	# There is one row for the transcripts, and one row per pvalue grob
+	nrows <- length(pvalue_grobs) + 1
+	main_viewport <- grid::viewport(layout = grid::grid.layout(nrow = nrows, heights = unit(c(tx_fraction,  rep(1, nrows - 1)),
+												c("npc", rep("null", nrows - 1)))))
 
+	# Creating all the row viewports
+	sub_viewports <- lapply(1:nrows, function(x) grid::vpStack(grid::viewport(layout.pos.row = x,
+										  name = paste0("row_", x)),
+								   grid::plotViewport(margins = if(x != 1) margins else c(0, margins[2], 0, margins[4]),
+										      name = "plotting_region")))
+
+	# Creating the output gTree object with the main viewport and childrenvp set
 	output_gtree <- grid::gTree(vp = main_viewport,
-				    childrenvp = vpList(grid::viewport(layout.pos.row = 1, name = "tx_vp"),
-							grid::viewport(layout.pos.row = 2, name = "pvalue_vp")))
+				    childrenvp = do.call("vpList", sub_viewports),
+				    cl = "pvalue_tx_grob")
 
-	# Plotting the transcripts in the top viewport
-	tx_gtree <- grid::gTree(children = gList(transcriptsGrob(genes, transcripts, exons, cds,
-								 first_tx_only = first_tx_only,
-								 xscale = xscale,
-								 transcript_margins = transcript_margins)),
-				vp = "tx_vp")
+	# Creating a gTree that will contain all the transcripts to be plotted
+	# This is only done if xrange is not NULL
+	if(!is.null(xrange)) {
+		# Plotting the transcripts in the top viewport
+		tx_gtree <- grid::gTree(children = grid::gList(transcriptsGrob(genes, transcripts, exons, cds,
+									       first_tx_only = first_tx_only,
+									       xscale = xrange)),
+					vp = grid::vpPath("row_1", "plotting_region"))
+
+		output_gtree <- grid::addGrob(output_gtree, tx_gtree)
+	}
 
 	# Plotting the p-values in the bottom viewport
-	pvalue_gtree <- grid::gTree(children = gList(pvalueGrob(gwas_results, interval = xscale,
-								feature = feature, 
-								pvalue_margins = pvalue_margins,
-								yexpand = yexpand)),
-				    vp = "pvalue_vp")
 
-	output_gtree <- addGrob(output_gtree, tx_gtree)
-	output_gtree <- addGrob(output_gtree, pvalue_gtree)
+	for(i in 1:length(pvalue_grobs)) {
+		output_gtree <- grid::addGrob(output_gtree,
+					      grid::gTree(children = gList(pvalue_grobs[[i]]),
+							  vp = vpPath(paste0("row_", as.character(i + 1)), "plotting_region")))
+	}
+
 
 	return(output_gtree)
 }

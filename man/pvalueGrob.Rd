@@ -4,13 +4,7 @@
 \alias{pvalueGrob}
 \title{A grob representing p-values of a GWAS analysis at a locus to plot using grid functions}
 \usage{
-pvalueGrob(
-  gwas_results,
-  interval,
-  feature = NULL,
-  pvalue_margins = c(5.1, 4.1, 4.1, 2.1),
-  yexpand = c(0, 0)
-)
+pvalueGrob(gwas_results, interval, feature = NULL, yexpand = c(0, 0))
 }
 \arguments{
 \item{gwas_results}{A GRanges object or data.frame of GWAS results.
@@ -26,11 +20,6 @@ region.}
 interest to mark with vertical dotted lines. Both the start and end of
 the feature will be indicated with a line. If NULL (default), then no
 lines are drawn.}
-
-\item{pvalue_margins}{A numeric of length 4 or that can be recycled to that
-length. The margins used by the function \code{\link[grid]{plotViewport}}
-to set the margins around the plotting region. By default it is set
-to c(5.1, 4.1, 4.1, 2.1).}
 
 \item{yexpand}{A numeric of length 2 representing expansion factors
 of y-scale limits. The first value is the expansion factor to

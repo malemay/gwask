@@ -4,15 +4,7 @@
 \alias{transcriptsGrob}
 \title{Generate a grob of all the possible transcripts for genes in a genomic region using grid}
 \usage{
-transcriptsGrob(
-  genes,
-  transcripts,
-  exons,
-  cds,
-  xscale,
-  first_tx_only = FALSE,
-  transcript_margins = c(0, 4.1, 0, 2.1)
-)
+transcriptsGrob(genes, transcripts, exons, cds, xscale, first_tx_only = FALSE)
 }
 \arguments{
 \item{genes}{A GRanges object containing the known genes for the
@@ -41,11 +33,6 @@ interval are plotted.}
 
 \item{first_tx_only}{A logical. Whether to plot only the first transcript
 of a given gene (default: FALSE).}
-
-\item{transcript_margins}{A numeric of length 4 or that can be recycled to that
-length. The margins are used by the function \code{\link[grid]{plotViewport}}
-to set the margins around the plotting region. By default it is set
-to c(0, 4.1, 0, 2.1).}
 }
 \value{
 A gTree with the proper viewports and grobs set for plotting all
