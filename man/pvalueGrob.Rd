@@ -4,7 +4,14 @@
 \alias{pvalueGrob}
 \title{A grob representing p-values of a GWAS analysis at a locus to plot using grid functions}
 \usage{
-pvalueGrob(gwas_results, interval, feature = NULL, yexpand = c(0, 0))
+pvalueGrob(
+  gwas_results,
+  interval,
+  feature = NULL,
+  yexpand = c(0, 0),
+  merging_gap = 10^9,
+  cex.points = 0.5
+)
 }
 \arguments{
 \item{gwas_results}{A GRanges object or data.frame of GWAS results.
@@ -26,6 +33,13 @@ of y-scale limits. The first value is the expansion factor to
 the top while the second value is the expansion factor to the bottom.
 Values of 0 (the default) represent no expansion relative to the
 values in x-scale.}
+
+\item{merging_gap}{A numeric value specifying how far apart various
+signals in the interval GRanges object can be in order to be merged.
+This should be a very high value (default = 10^10) such that all ranges
+located on a given chromosome will be merged.}
+
+\item{cex.points}{A numeric value. The expansion factor for the points.}
 }
 \value{
 A gTree object that can be plotted with grid.draw() to display the p-values.

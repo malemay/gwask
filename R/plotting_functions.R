@@ -289,7 +289,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 	stopifnot(sum(lengths(transcripts)) == length(cds))
 
 	# Extracting the genes to plot from the xscale GRanges object
-	genes <- IRanges::subsetByOverlaps(genes, xscale)
+	genes <- IRanges::subsetByOverlaps(genes, xscale, ignore.strand = TRUE)
 
 	if(!length(genes)) {
 		warning("No genes in the selected interval")
@@ -366,6 +366,11 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #'   the top while the second value is the expansion factor to the bottom.
 #'   Values of 0 (the default) represent no expansion relative to the
 #'   values in x-scale.
+#' @param merging_gap A numeric value specifying how far apart various
+#'   signals in the interval GRanges object can be in order to be merged.
+#'   This should be a very high value (default = 10^10) such that all ranges
+#'   located on a given chromosome will be merged.
+#' @param cex.points A numeric value. The expansion factor for the points.
 #'
 #' @return A gTree object that can be plotted with grid.draw() to display the p-values.
 #'
@@ -373,7 +378,8 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #' @examples
 #' NULL
 pvalueGrob <- function(gwas_results, interval, feature = NULL,
-		       yexpand = c(0, 0)) {
+		       yexpand = c(0, 0), merging_gap = 10^9,
+		       cex.points = 0.5) {
 
 	if(!inherits(gwas_results, "GRanges")) {
 		gwas_results <- GenomicRanges::makeGRangesFromDataFrame(gwas_results,
@@ -385,10 +391,21 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	}
 
 	# We keep only the part of the gwas_results that overlaps the interval
-	gwas_results <- IRanges::subsetByOverlaps(gwas_results, interval)
+	gwas_results <- IRanges::subsetByOverlaps(gwas_results, interval, ignore.strand = TRUE)
+
+	# Also adding a column with a numerical index into the signal that a marker belongs to (for coloring the points)
+	if(length(gwas_results)) {
+		overlaps <- IRanges::findOverlaps(gwas_results, interval)
+		gwas_results$signal <- 1
+		gwas_results[IRanges::from(overlaps)]$signal <- IRanges::to(overlaps)
+	}
+
+	# We also need to merge the ranges in interval so it can be used to set the x-scale for plotting
+	xrange <- GenomicRanges::reduce(interval, min.gapwidth = merging_gap, ignore.strand = TRUE)
+	stopifnot(length(xrange) == 1)
 
 	# Checking if the feature (if provided) overlaps the interval
-	if(!is.null(feature) && !overlapsAny(feature, interval)) {
+	if(!is.null(feature) && !overlapsAny(feature, xrange)) {
 		warning("The feature parameter does not overlap the plotting interval; setting feature to NULL")
 		feature <- NULL
 	}
@@ -407,8 +424,8 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	}
 
 	# Creating a viewport with appropriate scales
-	pvalue_viewport <- grid::viewport(xscale = c(GenomicRanges::start(interval),
-						     GenomicRanges::end(interval)),
+	pvalue_viewport <- grid::viewport(xscale = c(GenomicRanges::start(xrange),
+						     GenomicRanges::end(xrange)),
 					  yscale = yscale)
 
 	# Creating the output gTree object to which grobs will be added
@@ -448,7 +465,9 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	# Then we can plot the data points
 	output_gtree <- grid::addGrob(output_gtree,
 				      grid::pointsGrob(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
-						       y = grid::unit(gwas_results$log10p, "native")))
+						       y = grid::unit(gwas_results$log10p, "native"),
+						       pch = 20,
+						       gp = gpar(cex = cex.points, col = gg_hue(max(gwas_results$signal))[gwas_results$signal])))
 
 	# Adding a y-axis
 	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob())
@@ -552,5 +571,18 @@ pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
 
 
 	return(output_gtree)
+}
+
+#' Generating a vector of colors comparable to those used by ggplot2
+#'
+#' @param n An integer of length one. The number of colors to generate
+#'
+#' @return A vector of colors to be used for plotting
+#'
+#' @examples
+#' NULL
+gg_hue <- function(n) {
+	hues = seq(15, 375, length = n + 1)
+	hcl(h = hues, l = 65, c = 100)[1:n]
 }
 

@@ -36,7 +36,7 @@ extract_signals <- function(markers, threshold, distance = 10^5) {
 	if(!length(markers)) return(markers)
 
 	# We then reduce this GRanges object by merging all GRanges that are separated by less than distance bp
-	output <- reduce(markers, min.gapwidth = as.integer(distance), with.revmap = TRUE)
+	output <- reduce(markers, min.gapwidth = as.integer(distance), with.revmap = TRUE, ignore.strand = TRUE)
 
 	# Generating a unique signal identifier
 	output$signal_id <- paste0(seqnames(output), "_", as.character(start(output)), "_", as.character(end(output)))
