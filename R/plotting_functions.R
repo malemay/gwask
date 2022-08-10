@@ -8,8 +8,12 @@
 #'   threshold line should be plotted.
 #' @param min_log10p Numeric. The minimum -log10(p-value) to display on the plot
 #'   can be used to filter out some non-significant markers for plotting speedup.
-#' @param signals A GenomicRanges object containing reference signals to be added
+#' @param ref_signals A GenomicRanges object containing reference signals to be added
 #'   to the plot. If NULL (the default), then no signals are plotted.
+#' @param new_signals A GenomicRanges object containing signals that were discovered
+#'   for this trait. When provided, this colors the labels of the reference signals
+#'   that were found in green, and those that were not found in red. Supplying
+#'   new_signals without supplying ref_signals throws an error.
 #' @param numeric_chrom Logical. Whether chromosome names should be stripped from
 #'   their alphabetical component and converted to numeric values (default: FALSE).
 #' @param yexpand A numeric of length two. A fractional value relative to the
@@ -28,7 +32,8 @@
 #' @examples
 #' NULL
 manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
-			  signals = NULL, numeric_chrom = FALSE,
+			  ref_signals = NULL, new_signals = NULL,
+			  numeric_chrom = FALSE,
 			  yexpand = c(0.03, 0.08), xexpand = c(0.03, 0.03),
 			  cex.points = 0.5, cex.lab = 1,
 			  margins = c(5.1, 4.1, 4.1, 2.1)) {
@@ -63,12 +68,22 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 	# Removing the associations that are less significant than min_log10p
 	if(min_log10p > 0) gwas_results <- gwas_results[gwas_results$log10p >= min_log10p]
 
-	# If signals are provided, we need to also transform their coordinates to linear positions
-	if(!is.null(signals)) {
-		signals$manhattan_rpos <- (GenomicRanges::start(signals) + GenomicRanges::end(signals)) / 2 +
-			chrom_start[as.character(GenomicRanges::seqnames(signals))]
+	# Checking that new_signals is only provided if ref_signals is
+	if(!is.null(new_signals) && is.null(ref_signals)) stop("new_signals is set but ref_signals is NULL")
+
+	# If ref_signals are provided, we need to also transform their coordinates to linear positions
+	if(!is.null(ref_signals)) {
+		ref_signals$manhattan_rpos <- (GenomicRanges::start(ref_signals) + GenomicRanges::end(ref_signals)) / 2 +
+			chrom_start[as.character(GenomicRanges::seqnames(ref_signals))]
 		# Also rescaling the p-values to npc coordinates between 0.2 and 0.8 for plotting
-		signals$pvalue_rescaled <- signals$log_pvalue / max(signals$log_pvalue) * 0.6 + 0.2
+		ref_signals$pvalue_rescaled <- ref_signals$log_pvalue / max(ref_signals$log_pvalue) * 0.6 + 0.2
+
+		# Setting the color of the labels if the ref_signals were found, or black if no new_signals provided
+		if(!is.null(new_signals)) {
+			ref_signals$labcol <- ifelse(IRanges::overlapsAny(ref_signals, new_signals, ignore.strand = TRUE), "forestgreen", "red")
+		} else {
+			ref_signals$labcol <- "black"
+		}
 	}
 
 	# Setting the plotting scales
@@ -137,19 +152,20 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 							      name = "manhattan_threshold"))
 	}
 
-	# Adding the signals if not NULL
-	if(!is.null(signals)) {
-		for(i in 1:length(signals)) {
+	# Adding the ref_signals if not NULL
+	if(!is.null(ref_signals)) {
+		for(i in 1:length(ref_signals)) {
 			output_gtree <- grid::addGrob(output_gtree,
-						      grid::linesGrob(x = grid::unit(signals[i]$manhattan_rpos, "native"),
+						      grid::linesGrob(x = grid::unit(ref_signals[i]$manhattan_rpos, "native"),
 								      y = c(0, 1),
 								      gp = grid::gpar(lty = "16"),
 								      name = paste0("manhattan_sigline_", i)))
 
 			output_gtree <- grid::addGrob(output_gtree,
-						      grid::textGrob(label = signals[i]$locus,
-								     x = grid::unit(signals[i]$manhattan_rpos, "native"),
-								     y = signals[i]$pvalue_rescaled, hjust = 0.1,
+						      grid::textGrob(label = ref_signals[i]$locus,
+								     x = grid::unit(ref_signals[i]$manhattan_rpos, "native"),
+								     y = ref_signals[i]$pvalue_rescaled, hjust = 0.1,
+								     gp = grid::gpar(col = ref_signals[i]$labcol),
 								     name = paste0("manhattan_siglabel_", i)))
 		}
 	}

@@ -8,7 +8,8 @@ manhattanGrob(
   gwas_results,
   threshold = NULL,
   min_log10p = 0,
-  signals = NULL,
+  ref_signals = NULL,
+  new_signals = NULL,
   numeric_chrom = FALSE,
   yexpand = c(0.03, 0.08),
   xexpand = c(0.03, 0.03),
@@ -29,8 +30,13 @@ threshold line should be plotted.}
 \item{min_log10p}{Numeric. The minimum -log10(p-value) to display on the plot
 can be used to filter out some non-significant markers for plotting speedup.}
 
-\item{signals}{A GenomicRanges object containing reference signals to be added
+\item{ref_signals}{A GenomicRanges object containing reference signals to be added
 to the plot. If NULL (the default), then no signals are plotted.}
+
+\item{new_signals}{A GenomicRanges object containing signals that were discovered
+for this trait. When provided, this colors the labels of the reference signals
+that were found in green, and those that were not found in red. Supplying
+new_signals without supplying ref_signals throws an error.}
 
 \item{numeric_chrom}{Logical. Whether chromosome names should be stripped from
 their alphabetical component and converted to numeric values (default: FALSE).}
