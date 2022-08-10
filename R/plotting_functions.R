@@ -406,8 +406,8 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 
 	# Checking if the feature (if provided) overlaps the interval
 	if(!is.null(feature) && !overlapsAny(feature, xrange)) {
-		warning("The feature parameter does not overlap the plotting interval; setting feature to NULL")
-		feature <- NULL
+		warning("The feature parameter does not overlap the plotting interval; extending plotting range to include feature")
+		xrange <- GenomicRanges::reduce(c(feature, xrange), min.gapwidth = merging_gap, ignore.strand = TRUE)
 	}
 
 	# Setting the yscale depending on whether GWAS data is provided or not
