@@ -479,10 +479,15 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	}
 
 	# Then we can plot the data points
+	if("pruned" %in% names(GenomicRanges::mcols(gwas_results))) {
+		gwas_results$pch <- ifelse(gwas_results$pruned, 20, 8)
+	} else {
+		gwas_results$pch <- 20
+	}
 	output_gtree <- grid::addGrob(output_gtree,
 				      grid::pointsGrob(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
 						       y = grid::unit(gwas_results$log10p, "native"),
-						       pch = 20,
+						       pch = gwas_results$pch,
 						       gp = gpar(cex = cex.points, col = gg_hue(max(gwas_results$signal))[gwas_results$signal])))
 
 	# Adding a y-axis
