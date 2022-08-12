@@ -4,7 +4,13 @@
 \alias{format_gapit_gwas}
 \title{Format GAPIT GWAS results for generating Manhattan plots}
 \usage{
-format_gapit_gwas(filename, ref_fasta, chromosomes, pattern = NULL)
+format_gapit_gwas(
+  filename,
+  ref_fasta,
+  chromosomes,
+  vcf_file = NULL,
+  pattern = NULL
+)
 }
 \arguments{
 \item{filename}{Character of length one. The name of the .csv file
@@ -21,6 +27,14 @@ of the GAPIT output. The integer chromosome values in the
 results returned by GAPIT will be used to index into that
 character vector to translate integer values into chromosome
 names.}
+
+\item{vcf_file}{A character. The path to a vcf file that will be queried
+to set the extent of the ranges in the output GRanges object.
+The IDs in that VCF file must match those in the SNP column of
+the GAPIT results file (an error will be thrown if they do not).
+If NULL (the default), then the ranges are not updated to reflect
+the underlying variants. The VCF file must be compressed with bgzip
+and indexed with tabix.}
 
 \item{pattern}{A character of length one. A regular expression
 used to match seqlevels of the chromsomes or scaffolds in the

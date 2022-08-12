@@ -212,3 +212,115 @@ gene_distance <- function(signals, markers, gene) {
 	return(markers)
 }
 
+#' Launch a MLM GWAS analysis on a VCF file read with VariantAnnotation::readVcf using GAPIT
+#'
+#' This function is used as a convenience to quickly launch a GAPIT analysis based on
+#' data read with \code{\link[VariantAnnotation]{readVcf}}.
+#'
+#' @param A CollapsedVcf object read by \code{\link[VariantAnnotation]{readVcf}}.
+#' @param kinship A kinship data.frame satisfying the input requirements of GAPIT.
+#' @param pca A pca data.frame satisfying the input requirements of GAPIT.
+#' @param phenodata A character, the name of a file containing semicolon-separated
+#'   phenotypic data
+#' @param trait A character, the name of the trait to analyze. Should correspond
+#'   to the name of a column in the phenotypic data.
+#' @param id_column A character, the name of the column containing the sample IDs
+#'   in the phenotypic data. These sample IDs should correspond to those used in the
+#'   VCF file.
+#' @param tmproot A character. The temporary directory to use as a root for creating
+#'   temporary storage.
+#' @param ... Other arguments to be passed to GAPIT
+#'
+#' @return A GRanges object containing the results of the GAPIT analysis.
+#' @export
+#'
+#' @examples
+#'NULL
+gapit_vcf <- function(vcf, kinship, pca, phenodata, trait, id_column, tmproot, ...) {
+
+	# Converting from VCF format to HapMap format suitable for input to GAPIT
+	genotypes <- vcf_to_gapit(vcf)
+
+	# Reading the phenotypic data
+	phenotypes <- read.table(phenodata, header = TRUE, sep = ";", stringsAsFactors = FALSE)[, c(id_column, trait)]
+
+	phenotypes <- phenotypes[complete.cases(phenotypes), ]
+
+	colnames(phenotypes) <- c("Taxa", trait)
+
+	# Running GAPIT in a temporary directory so that temporary files can be easily removed afterwards
+	tmpdir <- tempfile(tmpdir = tmproot)
+	dir.create(tmpdir, recursive = TRUE)
+
+	odir <- setwd(tmpdir)
+
+	gapit_results <- GAPIT3::GAPIT(Y = phenotypes,
+				       G = genotypes,
+				       KI = kinship,
+				       CV = pca,
+				       PCA.total = 0,
+				       Model.selection = FALSE,
+				       model = "MLM",
+				       file.output = FALSE,
+				       ...)
+
+	# Getting back to the original directory and cleaning
+	setwd(odir)
+	unlink(tmpdir, recursive = TRUE)
+
+	# Formatting the GAPIT results so they match the expected format
+	gapit_results <- gapit_results$GWAS[, c("SNP", "Chromosome", "Position ", "P.value")]
+
+	# WARNING: THIS CHROMOSOME NAMING SCHEME IS SPECIFIC TO SOYBEAN
+	gapit_results$Chromosome <- paste0("Gm", ifelse(as.numeric(gapit_results$Chromosome) < 10, "0", ""), gapit_results$Chromosome)
+	gapit_results$FDR_Adjusted_P.values <- NA_real_
+	gapit_results$log10p <- -log10(gapit_results$P.value)
+	gapit_results$pruned <- TRUE
+
+	gapit_results <- GenomicRanges::makeGRangesFromDataFrame(gapit_results,
+								 keep.extra.columns = TRUE,
+								 ignore.strand = TRUE,
+								 seqnames.field = "Chromosome",
+								 start.field = "Position ",
+								 end.field = "Position ")
+
+	gapit_results
+}
+
+#' Convert VCF records read with VariantAnnotation::readVCF into a format usable by GAPIT
+#'
+#'
+#' @param x A CollapsedVCF object as read by \code{\link[VariantAnotation]{readVcf}}
+#'
+#' @return A data.frame object representing data in HapMap format, suitable for
+#'   input as the genotype argument of \code{\link[GAPIT3]{GAPIT}}
+#'
+#' @examples
+#' NULL
+vcf_to_gapit <- function(x) {
+	n <- length(x)
+	id <- c("rs#", names(x))
+	alleles <- c("alleles", rep("A/T", n))
+	chrom <- c("chrom", as.character(as.numeric(sub("Gm", "", GenomicRanges::seqnames(x)))))
+	poscol <- c("pos", as.character(start(x)))
+	strandcol <- c("strand", rep("+", n))
+	assembly <- c("assembly#", rep(NA_character_, n))
+	center <- c("center", rep(NA_character_, n))
+	protLSID <- c("protLSID", rep(NA_character_, n))
+	assayLSID <- c("assayLSID", rep(NA_character_, n))
+	panelLSID <- c("panelLSID", rep(NA_character_, n))
+	QCcode <- c("QCcode", rep(NA_character_, n))
+
+	geno_lookup <- c("0/0" = "AA",
+			 "0/1" = "AT",
+			 "1/0" = "TA",
+			 "1/1" = "TT",
+			 "./." = "NN")
+
+	genotypes <- matrix(geno_lookup[VariantAnnotation::geno(x)$GT], nrow = n)
+	if(any(is.na(genotypes))) stop("Unrecognized GT field")
+	genotypes <- rbind(VariantAnnotation::samples(VariantAnnotation::header(x)), genotypes)
+
+	as.data.frame(cbind(id, alleles, chrom, poscol, strandcol, assembly, center, protLSID, assayLSID, panelLSID, QCcode, genotypes))
+}
+

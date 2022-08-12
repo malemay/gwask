@@ -168,6 +168,13 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0,
 #'   results returned by GAPIT will be used to index into that
 #'   character vector to translate integer values into chromosome
 #'   names.
+#' @param vcf_file A character. The path to a vcf file that will be queried
+#'   to set the extent of the ranges in the output GRanges object.
+#'   The IDs in that VCF file must match those in the SNP column of
+#'   the GAPIT results file (an error will be thrown if they do not).
+#'   If NULL (the default), then the ranges are not updated to reflect
+#'   the underlying variants. The VCF file must be compressed with bgzip
+#'   and indexed with tabix.
 #' @param pattern A character of length one. A regular expression
 #'   used to match seqlevels of the chromsomes or scaffolds in the
 #'   fasta index. Matching sequences will be kept. If NULL
@@ -183,11 +190,11 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0,
 #' @export
 #' @examples
 #' NULL
-format_gapit_gwas <- function(filename, ref_fasta, chromosomes, pattern = NULL) {
+format_gapit_gwas <- function(filename, ref_fasta, chromosomes, vcf_file = NULL, pattern = NULL) {
 
 	# Reading the file with the GAPIT results
 	gapit_df <- read.table(filename, header = TRUE, sep = ",", stringsAsFactors = FALSE,
-			       colClasses = c("NULL", "integer", "numeric", "numeric", "NULL", "NULL", "NULL", "NULL", "numeric", "NULL"))
+			       colClasses = c("character", "integer", "numeric", "numeric", "NULL", "NULL", "NULL", "NULL", "numeric", "NULL"))
 
 	# Reading the .fai index info
 	stopifnot(file.exists(paste0(ref_fasta, ".fai")))
@@ -217,6 +224,21 @@ format_gapit_gwas <- function(filename, ref_fasta, chromosomes, pattern = NULL) 
 
 	# Adding a column for the -log10(corrected p-value) for downstream applications
 	output$log10p <- -log10(gapit_df$P.value)
+
+	# Adding the information from the VCF file (if provided)
+	if(!is.null(vcf_file)) {
+		if(!file.exists(vcf_file)) stop(vcf_file, " does not exist")
+
+		vcf <- VariantAnnotation::VcfFile(vcf_file)
+		vcf_ranges <- MatrixGenerics::rowRanges(VariantAnnotation::readVcf(file = vcf,
+										   param = VariantAnnotation::ScanVcfParam(fixed = NA,
+															   info = NA,
+															   geno = NA)))
+
+		if(!all(output$SNP %in% names(vcf_ranges))) stop("Some markers in ", filename, " are not found in ", vcf_file)
+
+		GenomicRanges::ranges(output) <- GenomicRanges::ranges(vcf_ranges[output$SNP])
+	}
 
 	# Returning the output
 	return(output)
