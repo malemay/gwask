@@ -335,3 +335,41 @@ link_phenotypes <- function(sequences, haplotypes, phenotypes, id_column, phenot
 	return(haplotype_data)
 }
 
+#' A function that matches a set of significant k-mers to positions on haplotypes
+#'
+#' Details
+#'
+#' @param haplotypes To complete
+#' @param kmers To complete
+#' @param kmer_length To complete
+#'
+#' @return To complete
+#'
+#' @export
+#' @examples
+#' NULL
+match_kmers <- function(haplotypes, kmers, kmer_length) {
+
+	# Creating a list that will have as many elements as there are haplotypes
+	# This list will be output by the function
+	overlap_list <- list()
+
+	for(i in haplotypes) {
+		overlap_list[[i]] <- kmers
+		overlap_list[[i]]$fmatch   <- sapply(kmers$kmer, function(kmer) regexpr(kmer, i, fixed = TRUE))
+		overlap_list[[i]]$rmatch   <- sapply(kmers$kmer_reverse, function(kmer) regexpr(kmer, i, fixed = TRUE)) 
+		overlap_list[[i]]$matchpos <- pmax(overlap_list[[i]]$fmatch, overlap_list[[i]]$rmatch)
+	}
+
+	# Keeping only the k-mers for which there is at least one overlapping k-mer with a p-value
+	# Also keeping only relevant columns
+	overlap_list <- lapply(overlap_list, function(x) x[x$matchpos != -1, c("pvalue", "matchpos")])
+
+	# Coercing to an IRanges object
+	overlap_list <- lapply(overlap_list, function(x) {
+				       IRanges::IRanges(start = x$matchpos, width = kmer_length, log10p = -log10(x$pvalue))
+			     })
+
+	overlap_list
+}
+
