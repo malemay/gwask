@@ -10,8 +10,8 @@
 #' @examples
 #' NULL
 grid.phenotable <- function(haplotype_data) {
-	# Computing a table of the phenotypes observed per character
-	phenotable <- table(haplotype_data$phenotype_character, haplotype_data$id)
+	# Computing a table of the phenotypes observed per haplotype
+	phenotable <- table(haplotype_data$phenotype, haplotype_data$haplotype_id)
 
 	# Creating a viewport with the required cells to print the data
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = nrow(phenotable) + 1,
@@ -270,5 +270,68 @@ read_consensus <- function(input_fasta) {
 	names(sequences) <- sample_names
 
 	return(sequences)
+}
+
+#' Extract the haplotypes found in a set of sequences and filter based on frequency
+#'
+#' Details
+#'
+#' @param sequences To complete
+#' @param min_frequency To complete
+#'
+#' @return To complete
+#'
+#' @export
+#' @examples
+#' NULL
+get_haplotypes <- function(sequences, min_frequency) {
+
+	# First compute the number of times that a given sequence occurs in the dataset
+	haplotypes <- table(sequences)
+
+	# Keeping only haplotypes that occur at least min_frequency times
+	haplotypes <- haplotypes[haplotypes >= min_frequency]
+
+	# We return the sequences themselves instead of the table
+	haplotypes <- names(haplotypes)
+	haplotypes
+}
+
+#' A function that links haplotypes and the corresponding observed phenotypes
+#'
+#' Details
+#'
+#' @param sequences To complete
+#' @param haplotypes To complete
+#' @param phenotypes To complete
+#' @param id_column To complete
+#' @param phenotype_column To complete
+#'
+#' @return To complete
+#'
+#' @export
+#' @examples
+#' NULL
+link_phenotypes <- function(sequences, haplotypes, phenotypes, id_column, phenotype_column) {
+
+	# Initialize the output data with the sample names and their haplotype
+	haplotype_data <- data.frame(sample = names(sequences),
+				     haplotype = unname(sequences),
+				     stringsAsFactors = FALSE)
+
+	# Assigning a haplotype to each sample
+	haplotype_data$haplotype_id <- NA
+
+	for(i in 1:nrow(haplotype_data)) {
+		if(haplotype_data[i, "haplotype"] %in% haplotypes) {
+			haplotype_data[i, "haplotype_id"] <- which(haplotypes == haplotype_data[i, "haplotype"])
+		}
+	}
+
+	# Adding the phenotype for each sample
+	haplotype_data$phenotype <- phenotypes[match(haplotype_data$sample, phenotypes[[id_column]]), phenotype_column]
+
+	# Returning the data.frame
+	return(haplotype_data)
 }
 
