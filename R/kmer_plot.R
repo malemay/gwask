@@ -201,3 +201,74 @@ fill_gaps <- function(x) {
 	x
 }
 
+#' A function that reads the (sorted) k-mer p-values from the output of a k-mer GWAS analysis
+#'
+#' Details
+#'
+#' @param kmer_file To complete
+#' @param max_kmers To complete
+#' @param kmer_length To complete
+#'
+#' @return To complete
+#'
+#' @export
+#' @examples
+#' NULL
+read_kmer_pvalues <- function(kmer_file, max_kmers, kmer_length) {
+
+	# Reading the k-mer sequences and p-values from file, using only relevant columns
+	output <- read.table(kmer_file,
+			     colClasses = c("NULL", "character", rep("NULL", 6), "numeric"),
+			     nrows = max_kmers)
+
+	# Naming the two columns
+	names(output) <- c("kmer_id", "pvalue")
+
+	# As we assume that the p-value column is sorted, we need to check for this
+	if(is.unsorted(output$pvalue)) stop("ERROR: read_kmer_pvalues expects sorted p-values in ", kmer_file)
+
+	# Extracting the k-mer sequence from the k-mer ID
+	output$kmer <- sub("[^ATGC]+", "", output$kmer_id)
+
+	# Getting the reverse complement of the k-mer sequence
+	output$kmer_reverse <- as.character(Biostrings::reverseComplement(Biostrings::DNAStringSet(output$kmer)))
+
+	# Checking that all k-mer sequences have the expected length
+	if(!all(nchar(output$kmer) == kmer_length) || !all(nchar(output$kmer_reverse) == 31)) {
+		stop("Not all k-mers match expected length of ", kmer_length)
+	}
+
+	# Only keeping the necessary columns for returning the data.frame
+	return(output[, c("kmer", "kmer_reverse", "pvalue")])
+}
+
+#' Reading the consensus sequences obtained at a locus for a set of samples
+#'
+#' Details
+#'
+#' @param input_fasta To complete
+#'
+#' @return To complete
+#'
+#' @export
+#' @examples
+#' NULL
+read_consensus <- function(input_fasta) {
+	fasta_lines <- readLines(input_fasta)
+
+	# Extracting the names of the samples
+	sample_names <- grep("^>", fasta_lines, value = TRUE)
+	sample_names <- sub("^>", "", sample_names)
+
+	# Extracting the sequences themselves from the fasta file
+	sequences <- grep("^>", fasta_lines, value = TRUE, invert = TRUE)
+
+	# Checking that the number of samples matches the number of sequences
+	stopifnot(length(sample_names) == length(sequences))
+
+	# The names of the samples are the names of the sequence vector
+	names(sequences) <- sample_names
+
+	return(sequences)
+}
+
