@@ -152,20 +152,39 @@ map_color <- function(values, max, min = 0, pal = "YlOrRd", n.colors = 9) {
 #' Details
 #'
 #' @param hapdata To complete
-#' @param gaps To complete
+#' @param alignment To complete
 #'
 #' @return To complete
 #'
 #' @export
 #' @examples
 #' NULL
-adjust_gaps <- function(hapdata, gaps) {
-	if(!length(gaps)) return(hapdata)
+adjust_gaps <- function(hapdata, alignment) {
 
-	for(i in 1:length(gaps)) {
-		hapdata[hapdata$pos >= IRanges::start(gaps[i]), "pos"] <-
-			hapdata[hapdata$pos >= IRanges::start(gaps[i]), "pos"] + IRanges::width(gaps[i])
+	# Identifying the positions of the gaps from the alignment and formatting to an IRanges object
+	gaps <- stringr::str_locate_all(alignment, "-")
+	gaps <- lapply(gaps, function(x) IRanges::IRanges(start = x[, 1], end = x[, 2]))
+	gaps <- lapply(gaps, function(x) IRanges::reduce(x))
+
+	# There should be as many gaps as there are haplotypes
+	stopifnot(length(hapdata) == length(gaps))
+
+	# We iterate over the haplotypes/gaps
+	for(i in 1:length(hapdata)) {
+
+		# We check if there are any gaps for this haplotype
+		if(length(i_gaps <- gaps[[i]])) {
+
+			# We iterate over the gaps that were found for this haplotype
+			for(j in length(i_gaps)) {
+				indices <- which(hapdata[[i]]$pos >= IRanges::start(i_gaps[j]))
+				hapdata[[i]][indices, "pos"] <- hapdata[[i]][indices, "pos"] + IRanges::width(i_gaps[j])
+			}
+		}
 	}
+
+	# Now that the positions have been adjusted, we can fill the deleted positions with dashes
+	hapdata <- fill_gaps(hapdata)
 
 	return(hapdata)
 }
@@ -174,31 +193,32 @@ adjust_gaps <- function(hapdata, gaps) {
 #'
 #' Details
 #'
-#' @param x To complete
+#' @param x hapdata
 #'
 #' @return To complete
 #'
-#' @export
 #' @examples
 #' NULL
-fill_gaps <- function(x) {
+fill_gaps <- function(hapdata) {
 	# We need to get the set of positions covered from 1 to the maximum
-	maxpos <- max(do.call("rbind", x)$pos)
+	maxpos <- max(do.call("rbind", hapdata)$pos)
 
 	# Then we loop over all the data.frames and fill the missing positions with dashes
-	for(i in 1:length(x)) {
-		indices <- which(! 1:maxpos %in% x[[i]]$pos)
+	for(i in 1:length(hapdata)) {
+		indices <- which(! 1:maxpos %in% hapdata[[i]]$pos)
+
 		if(!length(indices)) next
+
 		new_rows <- data.frame(pos = indices,
 				       nuc = "-",
 				       log10p = 0,
-				       color = "black",
 				       stringsAsFactors = FALSE)
-		x[[i]] <- rbind(x[[i]], new_rows)
-		x[[i]] <- x[[i]][order(x[[i]]$pos), ]
+
+		hapdata[[i]] <- rbind(hapdata[[i]], new_rows)
+		hapdata[[i]] <- hapdata[[i]][order(hapdata[[i]]$pos), ]
 	}
 
-	x
+	hapdata
 }
 
 #' A function that reads the (sorted) k-mer p-values from the output of a k-mer GWAS analysis
@@ -371,5 +391,83 @@ match_kmers <- function(haplotypes, kmers, kmer_length) {
 			     })
 
 	overlap_list
+}
+
+#' Format haplotypes for plotting using k-mer overlap information
+#'
+#' Details
+#'
+#' @param haplotypes To complete
+#' @param overlaps To complete
+#'
+#' @return To complete
+#'
+#' @export
+#' @examples
+#' NULL
+format_haplotypes <- function(haplotypes, overlaps) {
+
+	# Iterate over all haplotypes using lapply
+	output <- lapply(haplotypes, function(x, kmer_overlaps) {
+
+				 # Initializing the output data.frame with each nucleotide and its position
+				 output_df <- data.frame(pos = 1:nchar(x),
+							 nuc = strsplit(x, "")[[1]],
+							 log10p = 0,
+							 stringsAsFactors = FALSE)
+
+				 # Getting the maximum -log10(p-value) for that nucleotide (if any)
+				 for(i in 1:nrow(output_df)) {
+					 i_range <- IRanges::IRanges(start = output_df[i, "pos"], width = 1)
+					 overlapped_pos <- IRanges::subsetByOverlaps(kmer_overlaps[[x]], i_range)
+					 if(length(overlapped_pos)) {
+						 output_df[i, "log10p"] <- max(S4Vectors::mcols(overlapped_pos)$log10p)
+					 }
+				 }
+
+				 output_df
+			     },
+			     kmer_overlaps = overlaps)
+
+	# Returning the list of data frames thus generated
+	return(output)
+}
+
+#' Align a set of haplotypes using mafft
+#'
+#' Details
+#'
+#' @param fasta_path To complete
+#' @param haplotypes To complete
+#' @param mafft_path To complete
+#' @param mafft_options To complete
+#'
+#' @return To complete
+#'
+#' @export
+#' @examples
+#' NULL
+mafft_align <- function(fasta_path, haplotypes, mafft_path, mafft_options) {
+
+	# Opening the fasta file that will be used as input for mafft
+	fasta <- file(fasta_path, open = "w+")
+	on.exit(close(fasta))
+
+	# Writing the haplotypes in fasta format to fasta_path
+	for(i in 1:length(haplotypes)) {
+		cat(paste0(">hap", i, "\n"), file = fasta)
+		cat(haplotypes[i], "\n", file = fasta)
+	}
+
+	# Prepare the mafft command and launch it using the system interface
+	# The output of mafft is read directly into an R variable
+	mafft_command <- paste0(mafft_path, " ", mafft_options, " ", fasta_path)
+	alignment <- system(mafft_command, intern = TRUE)
+
+	# Formatting the alignment for output
+	alignment <- strsplit(paste0(alignment, collapse = ""), split = ">hap[0-9]+")[[1]]
+	alignment <- alignment[nchar(alignment) > 0]
+
+	alignment
 }
 

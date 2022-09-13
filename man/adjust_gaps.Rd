@@ -4,12 +4,12 @@
 \alias{adjust_gaps}
 \title{Adjust plotting position according to the presence of gaps}
 \usage{
-adjust_gaps(hapdata, gaps)
+adjust_gaps(hapdata, alignment)
 }
 \arguments{
 \item{hapdata}{To complete}
 
-\item{gaps}{To complete}
+\item{alignment}{To complete}
 }
 \value{
 To complete

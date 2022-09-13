@@ -4,10 +4,10 @@
 \alias{fill_gaps}
 \title{Fill the deleted positions with dashes}
 \usage{
-fill_gaps(x)
+fill_gaps(hapdata)
 }
 \arguments{
-\item{x}{To complete}
+\item{x}{hapdata}
 }
 \value{
 To complete
