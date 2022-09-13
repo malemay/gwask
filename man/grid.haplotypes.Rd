@@ -4,12 +4,16 @@
 \alias{grid.haplotypes}
 \title{Plotting haplotypes}
 \usage{
-grid.haplotypes(plotting_data, difflist, fontsize = 8)
+grid.haplotypes(plotting_data, difflist, n_colors, pal, fontsize)
 }
 \arguments{
 \item{plotting_data}{To complete}
 
 \item{difflist}{To complete}
+
+\item{n_colors}{To complete}
+
+\item{pal}{To complete}
 
 \item{fontsize}{To complete}
 }

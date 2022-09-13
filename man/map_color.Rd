@@ -4,18 +4,16 @@
 \alias{map_color}
 \title{Map a set of numeric values onto a color palette}
 \usage{
-map_color(values, max, min = 0, pal = "YlOrRd", n.colors = 9)
+map_color(values, pal, n_colors, scale_buffer)
 }
 \arguments{
 \item{values}{To complete}
 
-\item{max}{To complete}
-
-\item{min}{To complete}
-
 \item{pal}{To complete}
 
-\item{n.colors}{To complete}
+\item{n_colors}{To complete}
+
+\item{scale_buffer}{To complete}
 }
 \value{
 To complete

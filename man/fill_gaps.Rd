@@ -7,7 +7,7 @@
 fill_gaps(hapdata)
 }
 \arguments{
-\item{x}{hapdata}
+\item{hapdata}{to complete}
 }
 \value{
 To complete
