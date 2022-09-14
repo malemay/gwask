@@ -2,22 +2,41 @@
 % Please edit documentation in R/kmer_plot.R
 \name{match_kmers}
 \alias{match_kmers}
-\title{A function that matches a set of significant k-mers to positions on haplotypes}
+\title{Match a set of k-mers to positions on sequences}
 \usage{
-match_kmers(haplotypes, kmers, kmer_length)
+match_kmers(sequences, kmers, kmer_length, data_columns = NULL)
 }
 \arguments{
-\item{haplotypes}{To complete}
+\item{sequences}{A character vector of DNA sequences to search
+for matches among the set of k-mers of interest.}
 
-\item{kmers}{To complete}
+\item{kmers}{A data.frame of k-mers of interest, as returned by
+\code{\link{read_kmer_pvalues}}. Must minimally contain a column
+called "kmer" for the k-mer sequence and another called "kmer_reverse"
+for the reverse-complemented sequence of the k-mer, plus any column
+listed in \code{data_columns}.}
 
-\item{kmer_length}{To complete}
+\item{kmer_length}{A numeric of length one. The length of the k-mers
+being considered. Used for sanity checks and for setting the width
+of the output IRanges.}
+
+\item{data_columns}{A character vector of data colums to carry over
+from the \code{kmers} data.frame to the output IRanges object.
+If \code{NULL} (the default), then no data columns are carried over.}
 }
 \value{
-To complete
+A list of IRanges objects with as many elements as the number
+  of sequences being queried. The name of the list elements corresponds
+  to the sequence queried. Each IRanges object contains the positions
+  where matching k-mers were identified. By default, no other information
+  than this position is returned; data columns from the \code{kmers} object
+  can optionally be carried over to the output through the \code{data_columns}
+  argument.
 }
 \description{
-Details
+This function find the positions of the matches of a set
+of k-mers in a vector of sequences, optionally carrying
+over metadata columns present in the k-mers dataset.
 }
 \examples{
 NULL

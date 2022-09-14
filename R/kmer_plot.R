@@ -1,15 +1,20 @@
-#' Reading the consensus sequences obtained at a locus for a set of samples
+#' Read a fasta file into a named character vector
 #'
-#' Details
+#' This function reads a fasta file into a named character vector.
+#' Its functionality is limited as it is required that all sequences
+#' be on a single line as the function assumes one line per sequence.
 #'
-#' @param input_fasta To complete
+#' @param input_fasta A character. The name of the fasta file to
+#'   read the input from.
 #'
-#' @return To complete
+#' @return A character vector with as many elements as there are
+#'   sequences. The name of each element is the name of the sequence
+#'   (the sequence of characters that follows ">").
 #'
 #' @export
 #' @examples
 #' NULL
-read_consensus <- function(input_fasta) {
+read_fasta <- function(input_fasta) {
 	fasta_lines <- readLines(input_fasta)
 
 	# Extracting the names of the samples
@@ -20,7 +25,10 @@ read_consensus <- function(input_fasta) {
 	sequences <- grep("^>", fasta_lines, value = TRUE, invert = TRUE)
 
 	# Checking that the number of samples matches the number of sequences
-	stopifnot(length(sample_names) == length(sequences))
+	if(length(sample_names) != length(sequences)) {
+		stop("The number of samples in ", input_fasta, " does not match the number of\n",
+		     "sequences. read_fasta() does not support sequences that run over several lines.")
+	}
 
 	# The names of the samples are the names of the sequence vector
 	names(sequences) <- sample_names
@@ -28,15 +36,33 @@ read_consensus <- function(input_fasta) {
 	return(sequences)
 }
 
-#' A function that reads the (sorted) k-mer p-values from the output of a k-mer GWAS analysis
+#' Read the (sorted) k-mer p-values from the output of a k-mer GWAS analysis
 #'
-#' Details
+#' This function reads the p-values associated with a set of k-mers output by
+#' a k-mers GWAS analysis. The k-mers must have been sorted by increasing p-value
+#' beforehand as it supports reading only the first top "n" p-values instead
+#' of the whole file. This function does check that the values read in are sorted
+#' by increasing p-value, but this only guarantees that the first n p-values were
+#' sorted.
 #'
-#' @param kmer_file To complete
-#' @param max_kmers To complete
-#' @param kmer_length To complete
+#' @param kmer_file A character. The name of the text file containing the k-mers
+#'   and p-values. The k-mer IDs (which will be processed to extract only the k-mer
+#'   sequence) must be int he second column, whereas the p-values must be in ninth
+#'   (and last) column.
+#' @param max_kmers The maximum number of k-mers to read from the file. The function
+#'   will issue a warning if the data.frame returned contains fewer rows than the total
+#'   number of records in the file.
+#' @param kmer_length A numeric of length one. The length of the k-mers used in
+#'   the analysis. Only used for sanity checks. The function will throw an error
+#'   if any of the k-mers do not match this length.
 #'
-#' @return To complete
+#' @return A data.frame with four columns:
+#'   \itemize{
+#'     \item{kmer: A character. The sequence of the k-mer.}
+#'     \item{kmer_reverse: A character. The reverse sequence of the k-mer.}
+#'     \item{pvalue: A numeric. The p-value associated with the k-mer.}
+#'     \item{log10p: A numeric. the -log10 of the p-value associated with the k-mer.}
+#'   }
 #'
 #' @export
 #' @examples
@@ -47,6 +73,12 @@ read_kmer_pvalues <- function(kmer_file, max_kmers, kmer_length) {
 	output <- read.table(kmer_file,
 			     colClasses = c("NULL", "character", rep("NULL", 6), "numeric"),
 			     nrows = max_kmers)
+
+	# Checking if we have reached the maximum number of k-mers
+	if(nrow(output) == max_kmers) {
+		warning("read_kmer_ptavlues() reached maximum number of k-mers (", max_kmers, ") in ", kmer_file,
+			"\nSome matching k-mers may be missed.")
+	}
 
 	# Naming the two columns
 	names(output) <- c("kmer_id", "pvalue")
@@ -61,28 +93,42 @@ read_kmer_pvalues <- function(kmer_file, max_kmers, kmer_length) {
 	output$kmer_reverse <- as.character(Biostrings::reverseComplement(Biostrings::DNAStringSet(output$kmer)))
 
 	# Checking that all k-mer sequences have the expected length
-	if(!all(nchar(output$kmer) == kmer_length) || !all(nchar(output$kmer_reverse) == 31)) {
+	if(!all(nchar(output$kmer) == kmer_length) || !all(nchar(output$kmer_reverse) == kmer_length)) {
 		stop("Not all k-mers match expected length of ", kmer_length)
 	}
+	
+	# Computing the -log10 of the p-value
+	output$log10p <- -log10(output$pvalue)
 
 	# Only keeping the necessary columns for returning the data.frame
-	return(output[, c("kmer", "kmer_reverse", "pvalue")])
+	return(output[, c("kmer", "kmer_reverse", "pvalue", "log10p")])
 }
 
-
-#' Extract the haplotypes found in a set of sequences and filter based on frequency
+#' Extract and filter the haplotypes from a set of sequences
 #'
-#' Details
+#' This function identifies the haplotypes (unique sequences) found
+#' in a set of sequences (as read using \code{\link{read_fasta}})
+#' and filters them based on their frequency.
 #'
-#' @param sequences To complete
-#' @param min_frequency To complete
+#' @param sequences A character vector of sequences. This vector is
+#'   typically named, but need not be. A check is made that the
+#'   sequences contain no other characters than those in the set ATGCN.
+#' @param min_frequency A numeric of length one. The minimum number of
+#'   times that a haplotype must occur for it to be kept. By default,
+#'   no filterinf is done (min_frequency = 0).
 #'
-#' @return To complete
+#' @return A character vector of haplotypes observed in the dataset with
+#'   a frequency >= min_frequency.
 #'
 #' @export
 #' @examples
 #' NULL
 get_haplotypes <- function(sequences, min_frequency) {
+
+	# Check that the sequence only contains valid nucleotides (ATGCN)
+	if(any(grepl("[^ATGCNatgcn]", sequences))) {
+		stop("Error in get_haplotypes(): one or several sequences contain invalid character(s).")
+	}
 
 	# First compute the number of times that a given sequence occurs in the dataset
 	haplotypes <- table(sequences)
@@ -92,25 +138,52 @@ get_haplotypes <- function(sequences, min_frequency) {
 
 	# We return the sequences themselves instead of the table
 	haplotypes <- names(haplotypes)
-	haplotypes
+	return(haplotypes)
 }
 
-#' A function that links haplotypes and the corresponding observed phenotypes
+#' Link haplotypes to their observed phenotypes
 #'
-#' Details
+#' This function takes sequences observed in a set of samples, a set
+#' of haplotypes of interest, and phenotypic data pertaining to the
+#' samples, and returns a data.frame that links the haplotype
+#' and its observed phenotype.
 #'
-#' @param sequences To complete
-#' @param haplotypes To complete
-#' @param phenotypes To complete
-#' @param id_column To complete
-#' @param phenotype_column To complete
+#' @param sequences A named character vector of sequences observed
+#'   in a set of samples, as returned by \code{\link{read_fasta}}.
+#'   The names of the elements in the vector must correspond to
+#'   samples that are found in the phenotypes data.frame.
+#' @param haplotypes A vector of haplotypes of interest observed
+#'   in the dataset. There must be a perfect correspondence between
+#'   these haplotypes and the sequences observed in the dataset.
+#' @param phenotypes A data.frame of phenotypes observed in a set
+#'   of samples matching the ones for which sequences are supplied.
+#'   Must minimally include columns corresponding to id_column and
+#'   phenotype_column.
+#' @param id_column A character of length one. The name of the column
+#'   in phenotypes that contains the sample IDs corresponding to the
+#'   names of the elements in \code{sequences}.
+#' @param phenotype_column Similar to id_column, but for the column
+#'   containing the trait to use.
 #'
-#' @return To complete
+#' @return A data.frame containing four columns:
+#' \itemize{
+#'    \item sample: the name of the sample
+#'    \item haplotype: the sequence of the haplotype for that sample
+#'    \item haplotype_id: a numeric identifier for the haplotype.
+#'                        If NA, then the haplotype did not match
+#'                        any of the reference haplotypes.
+#'    \item phenotype: the value of the phenotype observed for the
+#'                     trait of interest.
+#' }
 #'
 #' @export
 #' @examples
 #' NULL
 link_phenotypes <- function(sequences, haplotypes, phenotypes, id_column, phenotype_column) {
+
+	# Sanity checks
+	if(!id_column %in% colnames(phenotypes)) stop("Column ", id_column, " not found in phenotypes.")
+	if(!phenotype_column %in% colnames(phenotypes)) stop("Column ", phenotypes_column, " not found in phenotypes.")
 
 	# Initialize the output data with the sample names and their haplotype
 	haplotype_data <- data.frame(sample = names(sequences),
@@ -133,57 +206,126 @@ link_phenotypes <- function(sequences, haplotypes, phenotypes, id_column, phenot
 	return(haplotype_data)
 }
 
-#' A function that matches a set of significant k-mers to positions on haplotypes
+#' Match a set of k-mers to positions on sequences
 #'
-#' Details
+#' This function find the positions of the matches of a set
+#' of k-mers in a vector of sequences, optionally carrying
+#' over metadata columns present in the k-mers dataset.
 #'
-#' @param haplotypes To complete
-#' @param kmers To complete
-#' @param kmer_length To complete
+#' @param sequences A character vector of DNA sequences to search
+#'   for matches among the set of k-mers of interest.
+#' @param kmers A data.frame of k-mers of interest, as returned by
+#'   \code{\link{read_kmer_pvalues}}. Must minimally contain a column
+#'   called "kmer" for the k-mer sequence and another called "kmer_reverse"
+#'   for the reverse-complemented sequence of the k-mer, plus any column
+#'   listed in \code{data_columns}.
+#' @param kmer_length A numeric of length one. The length of the k-mers
+#'   being considered. Used for sanity checks and for setting the width
+#'   of the output IRanges.
+#' @param data_columns A character vector of data colums to carry over
+#'   from the \code{kmers} data.frame to the output IRanges object.
+#'   If \code{NULL} (the default), then no data columns are carried over.
 #'
-#' @return To complete
+#' @return A list of IRanges objects with as many elements as the number
+#'   of sequences being queried. The name of the list elements corresponds
+#'   to the sequence queried. Each IRanges object contains the positions
+#'   where matching k-mers were identified. By default, no other information
+#'   than this position is returned; data columns from the \code{kmers} object
+#'   can optionally be carried over to the output through the \code{data_columns}
+#'   argument.
 #'
 #' @export
 #' @examples
 #' NULL
-match_kmers <- function(haplotypes, kmers, kmer_length) {
+match_kmers <- function(sequences, kmers, kmer_length, data_columns = NULL) {
 
-	# Creating a list that will have as many elements as there are haplotypes
+	# Check for the appropriate format of the kmers dataset
+	if(!all(c("kmer", "kmer_reverse") %in% colnames(kmers))) {
+		stop("Error in match_kmers(): 'kmers' lacks the appropriate columns 'kmer' and/or 'kmer_reverse'")
+	}
+
+	# Check that kmer_length does match the length of the k-mers
+	if(!all(nchar(kmers$kmer) == kmer_length) || !all(kmers$reverse_kmer)) {
+		stop("Error in match_kmers(): the length of the kmers does not match the expected value of ", kmer_length)
+	}
+
+	# Creating a list that will have as many elements as there are sequences
 	# This list will be output by the function
 	overlap_list <- list()
 
-	for(i in haplotypes) {
+	for(i in sequences) {
 		overlap_list[[i]] <- kmers
 		overlap_list[[i]]$fmatch   <- sapply(kmers$kmer, function(kmer) regexpr(kmer, i, fixed = TRUE))
 		overlap_list[[i]]$rmatch   <- sapply(kmers$kmer_reverse, function(kmer) regexpr(kmer, i, fixed = TRUE)) 
 		overlap_list[[i]]$matchpos <- pmax(overlap_list[[i]]$fmatch, overlap_list[[i]]$rmatch)
 	}
 
-	# Keeping only the k-mers for which there is at least one overlapping k-mer with a p-value
-	# Also keeping only relevant columns
-	overlap_list <- lapply(overlap_list, function(x) x[x$matchpos != -1, c("pvalue", "matchpos")])
+	# Keeping only the k-mers for which there an overlap and relevant columns
+	columns <- "matchpos"
 
-	# Coercing to an IRanges object
-	overlap_list <- lapply(overlap_list, function(x) {
-				       IRanges::IRanges(start = x$matchpos, width = kmer_length, log10p = -log10(x$pvalue))
-			     })
+	if(!is.null(data_columns)) {
+		stopifnot(is.character(data_columns) && all(nchar(data_columns) > 0) && all(data_columns %in% colnames(kmers)))
+		columns <- c(columns, data_columns)
+	}
 
-	overlap_list
+	overlap_list <- lapply(overlap_list, function(x) x[x$matchpos != -1, columns])
+
+	# Coercing to an IRanges object and optionally appending data columns
+	overlap_list <- lapply(overlap_list, function(x, data_columns) {
+				       output <- IRanges::IRanges(start = x$matchpos, width = kmer_length)
+
+				       # Optionally adding metaata columns (if any)
+				       if(!is.null(data_columns)) {
+					       S4Vectors::mcols(output) <- x[, data_columns]
+					       names(S4Vectors::mcols(output)) <- data_columns
+				       }
+
+				       return(output)},
+			     data_columns = data_columns)
+
+	return(overlap_list)
 }
 
 #' Format haplotypes for plotting using k-mer overlap information
 #'
-#' Details
+#' This function prepares a set of haplotypes for plotting using the
+#' function \code{\link{grid.haplotypes}} by formatting each haplotype
+#' as a data.frame with one row per nucleotide and the associated p-value
+#' of that nucleotide.
 #'
-#' @param haplotypes To complete
-#' @param overlaps To complete
+#' @param haplotypes A character vector of haplotypes to prepare for
+#'   plotting.
+#' @param overlaps A list of IRanges object indicating the positions
+#'   of overlapping k-mers of interest and their associated -log10(p-value),
+#'   as returned by \code{\link{match_kmers}}. Note that a column called
+#'   "log10p", containing the -log10(p-value), is mandatory for format_haplotypes
+#'   to work, whereas it is optional for \code{\link{match_kmers}}. The names
+#'   of the elements of this list of IRanges must correspond to the haplotypes,
+#'   as the overlaps object is effectively queried by name.
 #'
-#' @return To complete
-#'
+#' @return A list of data.frames with as many elements as there are haplotypes.
+#'   Each such data.frame contains three columns:
+#'   \itemize{
+#'     \item pos: the position of the nucleotide along the haplotype
+#'     \item nuc: the nucleotide located at that position
+#'     \item log10p: the p-value associated with the most significant k-mer
+#'                   overlapping that position. If no significant k-mer
+#'                   overlaps that position, then the value is \code{NA}.
+#'   }
 #' @export
 #' @examples
 #' NULL
 format_haplotypes <- function(haplotypes, overlaps) {
+
+	# Testing if the log10p column is found in the overlaps IRanges objects
+	if(!all(sapply(overlaps, function(x) "log10p" %in% names(S4Vectors::mcols(x))))) {
+		stop("Error in format_haplotypes(): 'log10p' must be among the metadata columns of 'overlaps'")
+	}
+
+	# Testing if all haplotypes are represented in the overlaps dataset
+	if(!all(haplotypes %in% names(overlaps))) {
+		stop("Error in format_haplotypes(): not all haplotypes are represented in 'overlaps'")
+	}
 
 	# Iterate over all haplotypes using lapply
 	output <- lapply(haplotypes, function(x, kmer_overlaps) {
@@ -211,30 +353,39 @@ format_haplotypes <- function(haplotypes, overlaps) {
 	return(output)
 }
 
-#' Align a set of haplotypes using mafft
+#' Align a set of sequences using mafft
 #'
-#' Details
+#' This function takes a set of nucleotide sequences and aligns them
+#' using the mafft program for multiple sequence alignment. The mafft
+#' program is launched through the \code{system} interface as it is not
+#' an \code{R} program, however the results are imported directly into
+#' \code{R} and formatted for output.
 #'
-#' @param fasta_path To complete
-#' @param haplotypes To complete
-#' @param mafft_path To complete
-#' @param mafft_options To complete
+#' @param fasta_path A character. The path to the fasta file to use as
+#'   an input file to mafft. This file is only temporarily used, but it
+#'   is not deleted after the function executes (might be changed later).
+#' @param sequences A character vector of nucleotide sequences to align.
+#' @param mafft_path A character. The path to the \code{mafft} executable.
+#' @param mafft_options A character. A set of options to pass to \code{mafft}
+#'   between the name of the executable and the name of the fasta file containing
+#'   the sequences to align. By default, this argument is an empty string.
 #'
-#' @return To complete
+#' @return A character vector of aligned sequences which will all have the
+#'   same length due to gaps introduced by the alignment procedure.
 #'
 #' @export
 #' @examples
 #' NULL
-mafft_align <- function(fasta_path, haplotypes, mafft_path, mafft_options) {
+mafft_align <- function(fasta_path, sequences, mafft_path, mafft_options = "") {
 
 	# Opening the fasta file that will be used as input for mafft
 	fasta <- file(fasta_path, open = "w+")
 	on.exit(close(fasta))
 
-	# Writing the haplotypes in fasta format to fasta_path
-	for(i in 1:length(haplotypes)) {
-		cat(paste0(">hap", i, "\n"), file = fasta)
-		cat(haplotypes[i], "\n", file = fasta)
+	# Writing the sequences in fasta format to fasta_path
+	for(i in 1:length(sequences)) {
+		cat(paste0(">seq", i, "\n"), file = fasta)
+		cat(sequences[i], "\n", file = fasta)
 	}
 
 	# Prepare the mafft command and launch it using the system interface
@@ -243,25 +394,48 @@ mafft_align <- function(fasta_path, haplotypes, mafft_path, mafft_options) {
 	alignment <- system(mafft_command, intern = TRUE)
 
 	# Formatting the alignment for output
-	alignment <- strsplit(paste0(alignment, collapse = ""), split = ">hap[0-9]+")[[1]]
+	alignment <- strsplit(paste0(alignment, collapse = ""), split = ">seq[0-9]+")[[1]]
 	alignment <- alignment[nchar(alignment) > 0]
 
-	alignment
+	# Checking that all alignments have indeed the same length
+	stopifnot(length(unique(nchar(alignment))) == 1)
+
+	return(alignment)
 }
 
-#' Adjust plotting position according to the presence of gaps
+#' Adjust plotting position according to alignment gaps
 #'
-#' Details
+#' This function accepts a dataset of haplotypes formatted for plotting
+#' (with \code{\link{grid.haplotypes}}), as returned by the function
+#' \code{\link{format_haplotypes}}, as well as a multiple sequence
+#' alignment produced for those haplotypes using \code{\link{mafft_align}}.
+#' This information is used to update the formatted haplotypes by introducing
+#' gaps (shown as dashes, '-') in the alignment prior to plotting.
 #'
-#' @param hapdata To complete
-#' @param alignment To complete
+#' Once deleted positions have been identified, gaps are filled using the
+#' function \code{\link{fill_gaps}}, which is not exported by the package.
 #'
-#' @return To complete
+#' @param hapdata A list of data.frames containing information about haplotypes
+#'   to plot, as returned by \code{\link{format_haplotypes}}. Each such data.frame
+#'   must include the columns 'pos', 'nuc' and 'log10p'.
+#' @param alignment A character vector of aliigned sequences to be used for adjusting
+#'   the plotting positions and adding gaps in hapdata. The sequences must have a
+#'   one-to-one correspondence with the ones in hapdata; currently no sanity check
+#'   is implemented to make sure that this is indeed the case.
+#'
+#' @return A list of data.frames formatted as the input hapdata object, but with
+#'   positions modified to take the alignment into account and gaps added.
+#'   Gaps will be shown as a '-' nucleotide and \code{NA} as a -log10(p-value).
 #'
 #' @export
 #' @examples
 #' NULL
 adjust_gaps <- function(hapdata, alignment) {
+
+	# Some sanity checks on the hapdata object
+	if(!all(sapply(hapdata, function(x) all(c("nuc", "pos", "log10p") %in% colnames(x))))) {
+		stop("Error in adjust_gaps(): one or several required data columns missing in hapdata.")
+	}
 
 	# Identifying the positions of the gaps from the alignment and formatting to an IRanges object
 	gaps <- stringr::str_locate_all(alignment, "-")
@@ -293,16 +467,24 @@ adjust_gaps <- function(hapdata, alignment) {
 
 #' Fill the deleted positions with dashes
 #'
-#' Details
+#' This function takes a list of data.frames that have been
+#' adjusted for position by taking alignment gaps into account,
+#' and fills those positions with gaps by setting the nucleotide
+#' to a dash ('-') and the -log10(p-value) to \code{NA}. This
+#' function is not exported for direct use, but is instead called
+#' internally by \code{\link{adjust_gaps}} to simplify its code.
 #'
-#' @param hapdata to complete
+#' @param hapdata A list of data.frames containing data about
+#'   haplotypes to be plotted, possibly with missing positions
+#'   due to alignment gaps.
 #'
-#' @return To complete
+#' @return A list of data.frames similar in format to hapdata,
+#'   in which positions that correspond to gaps have been filled.
 #'
 #' @examples
 #' NULL
 fill_gaps <- function(hapdata) {
-	# We need to get the set of positions covered from 1 to the maximum
+	# We need to get the set of positions covered from 1 to the maximum across all haplotypes
 	maxpos <- max(do.call("rbind", hapdata)$pos)
 
 	# Then we loop over all the data.frames and fill the missing positions with dashes
@@ -320,102 +502,146 @@ fill_gaps <- function(hapdata) {
 		hapdata[[i]] <- hapdata[[i]][order(hapdata[[i]]$pos), ]
 	}
 
-	hapdata
+	return(hapdata)
 }
-
 
 #' Find positions that differ between two sequences
 #'
-#' Details
+#' This function takes as input a list of haplotypes that have been
+#' prepared for plotting and identifies the positions. The positions
+#' of the nucleotides must have been prepared with \code{\link{adjust_gaps}}
+#' such that there is a one-to-one correspondence between positions.
+#' Gaps are not flagged as differing between sequences.
 #'
-#' @param hapdata To complete
+#' @param hapdata A list of data.frames prepared for plotting,
+#'   as returned by \code{\link{adjust_gaps}}.
 #'
-#' @return To complete
+#' @return A list of numeric vectors indicating the positions in
+#'   hapdata where top consecutive haplotypes differ. The length
+#'   of the returned list is therefore length(hapdata) - 1.
 #'
 #' @export
 #' @examples
 #' NULL
 nucdiff <- function(hapdata) {
-	if(length(hapdata) <= 1) stop("nucdiff needs at least two haplotypes to compare")
+
+	# Checking that there are at least two haplotypes to compare
+	if(length(hapdata) < 2) stop("nucdiff needs at least two haplotypes to compare")
+
+	# Checking that all haplotypes have the same number of positions
+	if(!length(unique(sapply(hapdata, nrow))) == 1) {
+		stop("Error in nucdiff(): all input haplotypes must have the same length.")
+	}
 
 	# Creating a list that will contain the positions that differ
 	output <- list()
 
 	for(i in 1:(length(hapdata) - 1)) {
-		if(!all(hapdata[[i]]$pos == hapdata[[i + 1]]$pos)) stop("All positions must be shared between all haplotypes")
+		if(!all(hapdata[[i]]$pos == hapdata[[i + 1]]$pos)) stop("All positions must be shared between haplotypes")
 
-		output[[i]] <- which(hapdata[[i]]$nuc != hapdata[[i + 1]]$nuc & hapdata[[i]]$nuc != "-" & hapdata[[i + 1]]$nuc != "-")
+		# Identifying positions where a haplotype and the next one differ (without being a gap)
+		output[[i]] <- which(hapdata[[i]]$nuc != hapdata[[i + 1]]$nuc & 
+				     hapdata[[i]]$nuc != "-" &
+				     hapdata[[i + 1]]$nuc != "-")
 	}
 
-	output
+	return(output)
 }
 
-#' Plotting haplotypes
+#' Plot a set of haplotypes using grid functions
 #'
-#' Details
+#' This function uses grid functions to plot haplotype sequences at a
+#' given locus. Each sequence is plotted in its own row viewport and
+#' positions where consecutive haplotypes differ are optionally marked
+#' through the \code{difflist} argument. Nucleotides are color-coded
+#' according to the -log10(p-value) of the most significant k-mer
+#' that they are part of, thus highlighting the positions of highly
+#' significant k-mers and suggesting causal variants underlying
+#' the presence/absence of those k-mers. Color mapping is controlled
+#' through arguments that are passed to \code{\link{map_color}},
+#' a function that is not exported by this package.
 #'
-#' @param plotting_data To complete
-#' @param difflist To complete
-#' @param n_colors To complete
-#' @param pal To complete
-#' @param fontsize To complete
+#' @param hapdata A list of data.frames containing information about haplotypes
+#'   to plot, as returned by \code{\link{adjust_gaps}}. All haplotypes must
+#'   have the same number of positions.
+#' @param difflist A list of positions where sequences differ between two
+#'   consecutive haplotypes, as returned by \code{\link{nucdiff}}. The length
+#'   of this list must be length(hapdata) - 1. This argument is used to
+#'   represent sequence difference graphically. If \code{NULL} (the default),
+#'   then sequence differences are not represented graphically.
+#' @param fontsize The fontsize
+#' @inheritParams map_color
 #'
-#' @return To complete
+#' @return \code{NULL}, invisibly. This function is invoked for its plotting
+#'   side-effects.
 #'
 #' @export
 #' @examples
 #' NULL
-grid.haplotypes <- function(plotting_data, difflist, n_colors, pal, fontsize) {
+grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8, n_colors = 5, pal = "YlOrRd", scale_extend = 2) {
 
-	# Getting the number of haplotypes to plot
-	n_haplotypes <- length(plotting_data)
-
-	# Reformatting the data as a single data.frame
-	for(i in 1:n_haplotypes) plotting_data[[i]]$hapnum <- i
-	plotting_data <- do.call("rbind", plotting_data)
-
-	# Determining the number of columns as the maximum position to plot
-	n_columns <- max(plotting_data$pos)
-
-	# Mapping the -log10(pvalues) onto a color scale
-	map_color_output <- map_color(values = plotting_data$log10p,
-				      pal = pal,
-				      n_colors = n_colors,
-				      scale_buffer = 2)
-
-	plotting_data$color <- map_color_output$mapped_colors
-
-	# Dividing the viewport into rows
-	# Haplotype rows are interleaved with rows used to show the differences
-	#  between consecutive haplotypes and the last row is used to plot the color scale,
-	# hence the number of rows being
-	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = n_haplotypes * 2,
-								     ncol = n_columns,
-								     heights = grid::unit(rep(c(2, 1), n_haplotypes), "null"))))
-
-	# Iterating over the rows in plotting_data
-	for(i in 1:nrow(plotting_data)) {
-		grid::grid.text(plotting_data[i, "nuc"],
-				gp = grid::gpar(fontsize = fontsize,
-						fontfamily = "mono",
-						fontface = ifelse(!is.na(plotting_data[i, "log10p"]), "bold", "plain"),
-						col = plotting_data[i, "color"]),
-				vp = grid::viewport(layout.pos.row = plotting_data[i, "hapnum"] * 2 - 1,
-						    layout.pos.col = plotting_data[i, "pos"]))
+	# Checking that all haplotypes have the same number of positions
+	if(!length(unique(sapply(hapdata, nrow))) == 1) {
+		stop("Error in grid.haplotypes(): all input haplotypes must have the same length.")
 	}
 
-	# Also plotting the positions where the nucleotides differ
-	for(i in 1:length(difflist)) {
-		if(!length(difflist[[i]])) next
+	# Getting the number of haplotypes to plot
+	n_hap <- length(hapdata)
 
-		# Looping over the differing positions between haplotype i and the next one
-		for(j in difflist[[i]]) {
-			grid::grid.lines(x = 0.5, y = c(0, 1), vp = grid::viewport(layout.pos.row = i * 2, layout.pos.col = j))
+	# Reformatting the data as a single data.frame
+	for(i in 1:n_hap) hapdata[[i]]$hapnum <- i
+	hapdata <- do.call("rbind", hapdata)
+
+	# Mapping the -log10(pvalues) onto a color scale
+	map_color_output <- map_color(values = hapdata$log10p,
+				      pal = pal,
+				      n_colors = n_colors,
+				      scale_extend = scale_extend)
+
+	hapdata$color <- map_color_output$mapped_colors
+
+	# Dividing the viewport into rows and columns
+	# ----- Haplotype rows are interleaved with rows used to show sequence differences between consecutive haplotypes
+	# ----- The the last row is used to plot the color scale
+	# ----- Hence the number of rows being 2 * n_hap
+	# ----- The number of columns is the maximum position across all haplotypes
+	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = n_hap * 2,
+								     ncol = max(hapdata$pos),
+								     heights = grid::unit(rep(c(2, 1), n_hap), "null"))))
+
+	# Iterating over the rows in hapdata to plot the nucleotides in the appropriate row and column
+	for(i in 1:nrow(hapdata)) {
+		grid::grid.text(hapdata[i, "nuc"],
+				gp = grid::gpar(fontsize = fontsize,
+						fontfamily = "mono",
+						fontface = ifelse(!is.na(hapdata[i, "log10p"]), "bold", "plain"),
+						col = hapdata[i, "color"]),
+				vp = grid::viewport(layout.pos.row = hapdata[i, "hapnum"] * 2 - 1,
+						    layout.pos.col = hapdata[i, "pos"]))
+	}
+
+	# Also plotting the positions where the nucleotides differ (if difflist is provided)
+	if(!is.null(difflist)) {
+
+		# Check that the length of difflist is n_hap -1
+		if(n_hap - length(difflist) != 1) {
+			stop("Error in grid.haplotypes(): the length of difflist is not (number of haplotypes) - 1")
+		}
+
+		for(i in 1:length(difflist)) {
+			if(!length(difflist[[i]])) next
+
+			# Looping over the differing positions between haplotype i and the next one
+			for(j in difflist[[i]]) {
+				grid::grid.lines(x = 0.5,
+						 y = c(0, 1),
+						 vp = grid::viewport(layout.pos.row = i * 2, layout.pos.col = j))
+			}
 		}
 	}
 
-	# Finally plotting the color scale in the last viewport
-	grid::pushViewport(grid::viewport(layout.pos.row = 2 * n_haplotypes))
+	# Finally plotting the color scale in the bottom row
+	grid::pushViewport(grid::viewport(layout.pos.row = 2 * n_hap))
 	grid.colorscale(breaks = map_color_output$breaks,
 			base_palette = map_color_output$base_palette)
 	grid::upViewport()
@@ -426,20 +652,33 @@ grid.haplotypes <- function(plotting_data, difflist, n_colors, pal, fontsize) {
 	return(invisible(NULL))
 }
 
-#' Plot a table of phenotypes versus haplotypes
+#' Plot a contingency table of observed phenotypes and haplotypes
 #'
-#' Details
+#' This function uses grid function to plot the co-occurence of phenotypes
+#' and haplotypes. This can be used to analyze whether specific haplotypes
+#' are linked to the occurence of certain phenotypes.
 #'
-#' @param haplotype_data To complete
+#' @param phenodata A data.frame of observed haplotypes and the corresponding
+#'   phenotype observed for a given trait in a set of sample. The data.frame must
+#'   minimally contain a "phenoytpe" column with the phenotypic value and a
+#'   "haplotype_id" column with a numeric identifier for the haplotype. Each
+#'   row represents different sample.
 #'
-#' @return To complete
+#' @return \code{NULL}, invisibly. This function is invoked for its plotting
+#'   side-effects.
 #'
 #' @export
 #' @examples
 #' NULL
-grid.phenotable <- function(haplotype_data) {
+grid.phenotable <- function(phenodata) {
+
+	# Checking for required columns in phenodata
+	if(!all(c("phenotype", "haplotype_id") %in% colnames(phenodata))) {
+		stop("Error in grid.phenotable(): missing columns in phenodata.")
+	}
+
 	# Computing a table of the phenotypes observed per haplotype
-	phenotable <- table(haplotype_data$phenotype, haplotype_data$haplotype_id)
+	phenotable <- table(phenodata$phenotype, phenodata$haplotype_id)
 
 	# Creating a viewport with the required cells to print the data
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = nrow(phenotable) + 1,
@@ -471,25 +710,40 @@ grid.phenotable <- function(haplotype_data) {
 
 #' Map a set of numeric values onto a color palette
 #'
-#' Details
+#' This function takes a set of numeric values and maps them on a color palette
+#' provided by the RColorBrewer package. \code{NA} values are mapped to black
+#' as a default color for missing values.
 #'
-#' @param values To complete
-#' @param pal To complete
-#' @param n_colors To complete
-#' @param scale_buffer To complete
+#' @param values A numeric vector of values to be mapped on the color scale.
+#'   \code{NA} values are accepted and mapped to the "black" color.
+#' @param n_colors A numeric. The number of colors to use for the mapping p-values
+#'   onto a color scale. The maximum value allowed may differ depending on the
+#'   particular palette used. Currently, the maximum number allowed is always
+#'   2 below the maximum accepted by RColorBrewer for a given palette because
+#'   paler colors are stripped from the base palette provided.
+#' @param pal A character. The palette to use for to -log10(p-values) color scale.
+#'   must correspond to a palette in the RColorBrewer package.
+#' @param scale_extend A numeric. The number of units (of -log10(p-value)) to extend
+#'   the limits of the color scale by at both ends to make sure that extreme values
+#'   are mapped onto the scale.
 #'
-#' @return To complete
+#' @return A list of length three comprising the following elements:
+#'   \itemize{
+#'     \item mapped_colors: a character vector of colors mapped from the values input vector
+#'     \item breaks: a numeric vector of break positions used for mapping
+#'     \item base_palette: the colors that were used for mapping the numeric values
+#'   }
 #'
 #' @examples
 #' NULL
-map_color <- function(values, pal, n_colors, scale_buffer) {
+map_color <- function(values, pal, n_colors, scale_extend) {
 	# Getting the base palette with n_colors + 2 colors, because
 	# we want to get rid of the very pale colors
 	base_palette <- RColorBrewer::brewer.pal(n = n_colors + 2, name = pal)[-c(1, 2)]
 
-	# Breaking the numeric values into a factor
-	breaks <- seq(min(values, na.rm = TRUE) - scale_buffer,
-		      max(values, na.rm = TRUE) + scale_buffer,
+	# Getting the breaks based on the minimum/maximum values and the scale_extend parameter
+	breaks <- seq(min(values, na.rm = TRUE) - scale_extend,
+		      max(values, na.rm = TRUE) + scale_extend,
 		      length.out = n_colors + 1) 
 
 	# A vector of colors to use for plotting; NA values are changed to black
@@ -504,16 +758,28 @@ map_color <- function(values, pal, n_colors, scale_buffer) {
 
 #' Plot the color scale used in a haplotype plot
 #'
-#' Details
+#' This function takes a set of numeric breaks and a set of colors
+#' and uses this information to produce a graphical scale linking
+#' those breaks to the colors used in a plot. This function is not
+#' exported from the package and is therefore meant to be used only
+#' internally by the package.
 #'
-#' @param breaks To complete
-#' @param base_palette To complete
+#' @param breaks A numeric vector of breaks used for the color scale.
+#'   There must be one more break than the number of colors
+#' @param base_palette A character vector of colors used in mapping
+#'   the numeric values onto the color scale.
 #'
-#' @return To complete
+#' @return \code{NULL}, invisibly. This function is invoked for its
+#'   plotting side-effects.
 #'
 #' @examples
 #' NULL
 grid.colorscale <- function(breaks, base_palette) {
+
+	# Checking that the number of breaks is one more than the number of colors
+	if(length(breaks) != length(base_palette) + 1) {
+		stop("Error in grid.colorscale(): length(breaks) should be equal to length(base_palette) + 1")
+	}
 
 	# Getting the x-scale from the minimum and maximum values of the break labels
 	xscale <- range(breaks)
@@ -539,6 +805,7 @@ grid.colorscale <- function(breaks, base_palette) {
 	grid::grid.text("-log10(p-value)", y = grid::unit(-3, "lines"))
 
 	grid::upViewport()
+
 	return(invisible(NULL))
 }
 

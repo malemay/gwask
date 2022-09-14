@@ -2,20 +2,36 @@
 % Please edit documentation in R/kmer_plot.R
 \name{adjust_gaps}
 \alias{adjust_gaps}
-\title{Adjust plotting position according to the presence of gaps}
+\title{Adjust plotting position according to alignment gaps}
 \usage{
 adjust_gaps(hapdata, alignment)
 }
 \arguments{
-\item{hapdata}{To complete}
+\item{hapdata}{A list of data.frames containing information about haplotypes
+to plot, as returned by \code{\link{format_haplotypes}}. Each such data.frame
+must include the columns 'pos', 'nuc' and 'log10p'.}
 
-\item{alignment}{To complete}
+\item{alignment}{A character vector of aliigned sequences to be used for adjusting
+the plotting positions and adding gaps in hapdata. The sequences must have a
+one-to-one correspondence with the ones in hapdata; currently no sanity check
+is implemented to make sure that this is indeed the case.}
 }
 \value{
-To complete
+A list of data.frames formatted as the input hapdata object, but with
+  positions modified to take the alignment into account and gaps added.
+  Gaps will be shown as a '-' nucleotide and \code{NA} as a -log10(p-value).
 }
 \description{
-Details
+This function accepts a dataset of haplotypes formatted for plotting
+(with \code{\link{grid.haplotypes}}), as returned by the function
+\code{\link{format_haplotypes}}, as well as a multiple sequence
+alignment produced for those haplotypes using \code{\link{mafft_align}}.
+This information is used to update the formatted haplotypes by introducing
+gaps (shown as dashes, '-') in the alignment prior to plotting.
+}
+\details{
+Once deleted positions have been identified, gaps are filled using the
+function \code{\link{fill_gaps}}, which is not exported by the package.
 }
 \examples{
 NULL

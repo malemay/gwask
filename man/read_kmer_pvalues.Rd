@@ -2,22 +2,40 @@
 % Please edit documentation in R/kmer_plot.R
 \name{read_kmer_pvalues}
 \alias{read_kmer_pvalues}
-\title{A function that reads the (sorted) k-mer p-values from the output of a k-mer GWAS analysis}
+\title{Read the (sorted) k-mer p-values from the output of a k-mer GWAS analysis}
 \usage{
 read_kmer_pvalues(kmer_file, max_kmers, kmer_length)
 }
 \arguments{
-\item{kmer_file}{To complete}
+\item{kmer_file}{A character. The name of the text file containing the k-mers
+and p-values. The k-mer IDs (which will be processed to extract only the k-mer
+sequence) must be int he second column, whereas the p-values must be in ninth
+(and last) column.}
 
-\item{max_kmers}{To complete}
+\item{max_kmers}{The maximum number of k-mers to read from the file. The function
+will issue a warning if the data.frame returned contains fewer rows than the total
+number of records in the file.}
 
-\item{kmer_length}{To complete}
+\item{kmer_length}{A numeric of length one. The length of the k-mers used in
+the analysis. Only used for sanity checks. The function will throw an error
+if any of the k-mers do not match this length.}
 }
 \value{
-To complete
+A data.frame with four columns:
+  \itemize{
+    \item{kmer: A character. The sequence of the k-mer.}
+    \item{kmer_reverse: A character. The reverse sequence of the k-mer.}
+    \item{pvalue: A numeric. The p-value associated with the k-mer.}
+    \item{log10p: A numeric. the -log10 of the p-value associated with the k-mer.}
+  }
 }
 \description{
-Details
+This function reads the p-values associated with a set of k-mers output by
+a k-mers GWAS analysis. The k-mers must have been sorted by increasing p-value
+beforehand as it supports reading only the first top "n" p-values instead
+of the whole file. This function does check that the values read in are sorted
+by increasing p-value, but this only guarantees that the first n p-values were
+sorted.
 }
 \examples{
 NULL

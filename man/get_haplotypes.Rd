@@ -2,20 +2,27 @@
 % Please edit documentation in R/kmer_plot.R
 \name{get_haplotypes}
 \alias{get_haplotypes}
-\title{Extract the haplotypes found in a set of sequences and filter based on frequency}
+\title{Extract and filter the haplotypes from a set of sequences}
 \usage{
 get_haplotypes(sequences, min_frequency)
 }
 \arguments{
-\item{sequences}{To complete}
+\item{sequences}{A character vector of sequences. This vector is
+typically named, but need not be. A check is made that the
+sequences contain no other characters than those in the set ATGCN.}
 
-\item{min_frequency}{To complete}
+\item{min_frequency}{A numeric of length one. The minimum number of
+times that a haplotype must occur for it to be kept. By default,
+no filterinf is done (min_frequency = 0).}
 }
 \value{
-To complete
+A character vector of haplotypes observed in the dataset with
+  a frequency >= min_frequency.
 }
 \description{
-Details
+This function identifies the haplotypes (unique sequences) found
+in a set of sequences (as read using \code{\link{read_fasta}})
+and filters them based on their frequency.
 }
 \examples{
 NULL

@@ -2,26 +2,58 @@
 % Please edit documentation in R/kmer_plot.R
 \name{grid.haplotypes}
 \alias{grid.haplotypes}
-\title{Plotting haplotypes}
+\title{Plot a set of haplotypes using grid functions}
 \usage{
-grid.haplotypes(plotting_data, difflist, n_colors, pal, fontsize)
+grid.haplotypes(
+  hapdata,
+  difflist = NULL,
+  fontsize = 8,
+  n_colors = 5,
+  pal = "YlOrRd",
+  scale_extend = 2
+)
 }
 \arguments{
-\item{plotting_data}{To complete}
+\item{hapdata}{A list of data.frames containing information about haplotypes
+to plot, as returned by \code{\link{adjust_gaps}}. All haplotypes must
+have the same number of positions.}
 
-\item{difflist}{To complete}
+\item{difflist}{A list of positions where sequences differ between two
+consecutive haplotypes, as returned by \code{\link{nucdiff}}. The length
+of this list must be length(hapdata) - 1. This argument is used to
+represent sequence difference graphically. If \code{NULL} (the default),
+then sequence differences are not represented graphically.}
 
-\item{n_colors}{To complete}
+\item{fontsize}{The fontsize}
 
-\item{pal}{To complete}
+\item{n_colors}{A numeric. The number of colors to use for the mapping p-values
+onto a color scale. The maximum value allowed may differ depending on the
+particular palette used. Currently, the maximum number allowed is always
+2 below the maximum accepted by RColorBrewer for a given palette because
+paler colors are stripped from the base palette provided.}
 
-\item{fontsize}{To complete}
+\item{pal}{A character. The palette to use for to -log10(p-values) color scale.
+must correspond to a palette in the RColorBrewer package.}
+
+\item{scale_extend}{A numeric. The number of units (of -log10(p-value)) to extend
+the limits of the color scale by at both ends to make sure that extreme values
+are mapped onto the scale.}
 }
 \value{
-To complete
+\code{NULL}, invisibly. This function is invoked for its plotting
+  side-effects.
 }
 \description{
-Details
+This function uses grid functions to plot haplotype sequences at a
+given locus. Each sequence is plotted in its own row viewport and
+positions where consecutive haplotypes differ are optionally marked
+through the \code{difflist} argument. Nucleotides are color-coded
+according to the -log10(p-value) of the most significant k-mer
+that they are part of, thus highlighting the positions of highly
+significant k-mers and suggesting causal variants underlying
+the presence/absence of those k-mers. Color mapping is controlled
+through arguments that are passed to \code{\link{map_color}},
+a function that is not exported by this package.
 }
 \examples{
 NULL

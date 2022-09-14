@@ -7,13 +7,20 @@
 nucdiff(hapdata)
 }
 \arguments{
-\item{hapdata}{To complete}
+\item{hapdata}{A list of data.frames prepared for plotting,
+as returned by \code{\link{adjust_gaps}}.}
 }
 \value{
-To complete
+A list of numeric vectors indicating the positions in
+  hapdata where top consecutive haplotypes differ. The length
+  of the returned list is therefore length(hapdata) - 1.
 }
 \description{
-Details
+This function takes as input a list of haplotypes that have been
+prepared for plotting and identifies the positions. The positions
+of the nucleotides must have been prepared with \code{\link{adjust_gaps}}
+such that there is a one-to-one correspondence between positions.
+Gaps are not flagged as differing between sequences.
 }
 \examples{
 NULL

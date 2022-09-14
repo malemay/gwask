@@ -7,13 +7,21 @@
 fill_gaps(hapdata)
 }
 \arguments{
-\item{hapdata}{to complete}
+\item{hapdata}{A list of data.frames containing data about
+haplotypes to be plotted, possibly with missing positions
+due to alignment gaps.}
 }
 \value{
-To complete
+A list of data.frames similar in format to hapdata,
+  in which positions that correspond to gaps have been filled.
 }
 \description{
-Details
+This function takes a list of data.frames that have been
+adjusted for position by taking alignment gaps into account,
+and fills those positions with gaps by setting the nucleotide
+to a dash ('-') and the -log10(p-value) to \code{NA}. This
+function is not exported for direct use, but is instead called
+internally by \code{\link{adjust_gaps}} to simplify its code.
 }
 \examples{
 NULL

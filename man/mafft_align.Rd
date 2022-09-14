@@ -2,24 +2,33 @@
 % Please edit documentation in R/kmer_plot.R
 \name{mafft_align}
 \alias{mafft_align}
-\title{Align a set of haplotypes using mafft}
+\title{Align a set of sequences using mafft}
 \usage{
-mafft_align(fasta_path, haplotypes, mafft_path, mafft_options)
+mafft_align(fasta_path, sequences, mafft_path, mafft_options = "")
 }
 \arguments{
-\item{fasta_path}{To complete}
+\item{fasta_path}{A character. The path to the fasta file to use as
+an input file to mafft. This file is only temporarily used, but it
+is not deleted after the function executes (might be changed later).}
 
-\item{haplotypes}{To complete}
+\item{sequences}{A character vector of nucleotide sequences to align.}
 
-\item{mafft_path}{To complete}
+\item{mafft_path}{A character. The path to the \code{mafft} executable.}
 
-\item{mafft_options}{To complete}
+\item{mafft_options}{A character. A set of options to pass to \code{mafft}
+between the name of the executable and the name of the fasta file containing
+the sequences to align. By default, this argument is an empty string.}
 }
 \value{
-To complete
+A character vector of aligned sequences which will all have the
+  same length due to gaps introduced by the alignment procedure.
 }
 \description{
-Details
+This function takes a set of nucleotide sequences and aligns them
+using the mafft program for multiple sequence alignment. The mafft
+program is launched through the \code{system} interface as it is not
+an \code{R} program, however the results are imported directly into
+\code{R} and formatted for output.
 }
 \examples{
 NULL

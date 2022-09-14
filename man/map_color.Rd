@@ -4,22 +4,37 @@
 \alias{map_color}
 \title{Map a set of numeric values onto a color palette}
 \usage{
-map_color(values, pal, n_colors, scale_buffer)
+map_color(values, pal, n_colors, scale_extend)
 }
 \arguments{
-\item{values}{To complete}
+\item{values}{A numeric vector of values to be mapped on the color scale.
+\code{NA} values are accepted and mapped to the "black" color.}
 
-\item{pal}{To complete}
+\item{pal}{A character. The palette to use for to -log10(p-values) color scale.
+must correspond to a palette in the RColorBrewer package.}
 
-\item{n_colors}{To complete}
+\item{n_colors}{A numeric. The number of colors to use for the mapping p-values
+onto a color scale. The maximum value allowed may differ depending on the
+particular palette used. Currently, the maximum number allowed is always
+2 below the maximum accepted by RColorBrewer for a given palette because
+paler colors are stripped from the base palette provided.}
 
-\item{scale_buffer}{To complete}
+\item{scale_extend}{A numeric. The number of units (of -log10(p-value)) to extend
+the limits of the color scale by at both ends to make sure that extreme values
+are mapped onto the scale.}
 }
 \value{
-To complete
+A list of length three comprising the following elements:
+  \itemize{
+    \item mapped_colors: a character vector of colors mapped from the values input vector
+    \item breaks: a numeric vector of break positions used for mapping
+    \item base_palette: the colors that were used for mapping the numeric values
+  }
 }
 \description{
-Details
+This function takes a set of numeric values and maps them on a color palette
+provided by the RColorBrewer package. \code{NA} values are mapped to black
+as a default color for missing values.
 }
 \examples{
 NULL

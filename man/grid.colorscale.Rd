@@ -7,15 +7,22 @@
 grid.colorscale(breaks, base_palette)
 }
 \arguments{
-\item{breaks}{To complete}
+\item{breaks}{A numeric vector of breaks used for the color scale.
+There must be one more break than the number of colors}
 
-\item{base_palette}{To complete}
+\item{base_palette}{A character vector of colors used in mapping
+the numeric values onto the color scale.}
 }
 \value{
-To complete
+\code{NULL}, invisibly. This function is invoked for its
+  plotting side-effects.
 }
 \description{
-Details
+This function takes a set of numeric breaks and a set of colors
+and uses this information to produce a graphical scale linking
+those breaks to the colors used in a plot. This function is not
+exported from the package and is therefore meant to be used only
+internally by the package.
 }
 \examples{
 NULL

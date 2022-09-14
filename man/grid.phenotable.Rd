@@ -2,18 +2,25 @@
 % Please edit documentation in R/kmer_plot.R
 \name{grid.phenotable}
 \alias{grid.phenotable}
-\title{Plot a table of phenotypes versus haplotypes}
+\title{Plot a contingency table of observed phenotypes and haplotypes}
 \usage{
-grid.phenotable(haplotype_data)
+grid.phenotable(phenodata)
 }
 \arguments{
-\item{haplotype_data}{To complete}
+\item{phenodata}{A data.frame of observed haplotypes and the corresponding
+phenotype observed for a given trait in a set of sample. The data.frame must
+minimally contain a "phenoytpe" column with the phenotypic value and a
+"haplotype_id" column with a numeric identifier for the haplotype. Each
+row represents different sample.}
 }
 \value{
-To complete
+\code{NULL}, invisibly. This function is invoked for its plotting
+  side-effects.
 }
 \description{
-Details
+This function uses grid function to plot the co-occurence of phenotypes
+and haplotypes. This can be used to analyze whether specific haplotypes
+are linked to the occurence of certain phenotypes.
 }
 \examples{
 NULL
