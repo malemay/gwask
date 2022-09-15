@@ -377,6 +377,10 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #'  interest to mark with vertical dotted lines. Both the start and end of
 #'  the feature will be indicated with a line. If NULL (default), then no
 #'  lines are drawn.
+#' @param shading A GRanges object of length one indicating a region
+#'  that should be plotted as a shaded rectangle in the backgroud.
+#'  Typically used to highlight a region containing the highest p-values.
+#'  If NULL (the default) or length is 0, then no plotting is done.
 #' @param yexpand A numeric of length 2 representing expansion factors
 #'   of y-scale limits. The first value is the expansion factor to
 #'   the top while the second value is the expansion factor to the bottom.
@@ -393,7 +397,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #' @export
 #' @examples
 #' NULL
-pvalueGrob <- function(gwas_results, interval, feature = NULL,
+pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 		       yexpand = c(0, 0), merging_gap = 10^9,
 		       cex.points = 0.5) {
 
@@ -451,6 +455,18 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL,
 	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob())
 	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob())
 	output_gtree <- grid::addGrob(output_gtree, grid::textGrob("Position along reference (bp)", y = grid::unit(-3, "lines")))
+
+	# Adding shading if provided
+	if(!is.null(shading) && length(shading)) {
+		stopifnot(length(shading) == 1)
+		output_gtree <- grid::addGrob(output_gtree,
+					      grid::rectGrob(x = grid::unit(GenomicRanges::start(shading), "native"),
+							     width = grid::unit(GenomicRanges::width(shading), "native"),
+							     y = grid::unit(0, "npc"),
+							     height = grid::unit(1, "npc"),
+							     just = c(0, 0),
+							     gp = grid::gpar(fill = "black", alpha = 0.2)))
+	}
 
 	# Adding vertical lines with the location of the feature if provided
 	if(!is.null(feature)) {
