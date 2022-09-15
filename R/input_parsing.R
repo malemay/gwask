@@ -129,8 +129,8 @@ format_kmer_gwas <- function(input_bam, ref_fasta, pattern = NULL, min_mapq = 0,
 	# And we filter based on that count
 	output <- output[output$kmer_pos_count >= min_count]
 
-	# And reorder the output based on genomic coordinates
-	output <- sort(output)
+	# And reorder the output based on genomic coordinates while ignoring strand
+	output <- sort(output, ignore.strand = TRUE)
 
 	# Removing unnecessary memory-hungry columns
 	output$seq <- NULL
