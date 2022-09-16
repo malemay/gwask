@@ -391,6 +391,9 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #'   This should be a very high value (default = 10^10) such that all ranges
 #'   located on a given chromosome will be merged.
 #' @param cex.points A numeric value. The expansion factor for the points.
+#' @param col A character, the color for the regular (not pruned) points.
+#' @param pruned_col A character, the color for the pruned points. If \code{NULL}
+#'   (the default), then pruned points are not plotted a different color.
 #'
 #' @return A gTree object that can be plotted with grid.draw() to display the p-values.
 #'
@@ -399,7 +402,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #' NULL
 pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 		       yexpand = c(0, 0), merging_gap = 10^9,
-		       cex.points = 0.5) {
+		       cex.points = 0.5, col = "blue", pruned_col = NULL) {
 
 	if(!inherits(gwas_results, "GRanges")) {
 		gwas_results <- GenomicRanges::makeGRangesFromDataFrame(gwas_results,
@@ -495,16 +498,18 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 	}
 
 	# Then we can plot the data points
-	if("pruned" %in% names(GenomicRanges::mcols(gwas_results))) {
-		gwas_results$pch <- ifelse(gwas_results$pruned, 20, 8)
+	if("pruned" %in% names(GenomicRanges::mcols(gwas_results)) && !is.null(pruned_col)) {
+		gwas_results$color <- ifelse(gwas_results$pruned, pruned_col, col)
 	} else {
-		gwas_results$pch <- 20
+		gwas_results$color <- col
 	}
+
 	output_gtree <- grid::addGrob(output_gtree,
 				      grid::pointsGrob(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
 						       y = grid::unit(gwas_results$log10p, "native"),
-						       pch = gwas_results$pch,
-						       gp = gpar(cex = cex.points, col = gg_hue(max(gwas_results$signal))[gwas_results$signal])))
+						       pch = 20,
+						       gp = gpar(cex = cex.points,
+								 col = gwas_results$color)))
 
 	# Adding a y-axis
 	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob())

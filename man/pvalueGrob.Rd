@@ -11,7 +11,9 @@ pvalueGrob(
   shading = NULL,
   yexpand = c(0, 0),
   merging_gap = 10^9,
-  cex.points = 0.5
+  cex.points = 0.5,
+  col = "blue",
+  pruned_col = NULL
 )
 }
 \arguments{
@@ -46,6 +48,11 @@ This should be a very high value (default = 10^10) such that all ranges
 located on a given chromosome will be merged.}
 
 \item{cex.points}{A numeric value. The expansion factor for the points.}
+
+\item{col}{A character, the color for the regular (not pruned) points.}
+
+\item{pruned_col}{A character, the color for the pruned points. If \code{NULL}
+(the default), then pruned points are not plotted a different color.}
 }
 \value{
 A gTree object that can be plotted with grid.draw() to display the p-values.
