@@ -9,6 +9,7 @@ pvalueGrob(
   interval,
   feature = NULL,
   shading = NULL,
+  threshold = NULL,
   yexpand = c(0, 0),
   merging_gap = 10^9,
   cex.points = 0.5,
@@ -17,9 +18,8 @@ pvalueGrob(
 )
 }
 \arguments{
-\item{gwas_results}{A GRanges object or data.frame of GWAS results.
-If a data.frame, must include the columns manhattan_chrom and
-manhattan_cpos for coercion to a GRanges. The metadata column
+\item{gwas_results}{A GRanges object of GWAS results.
+The metadata column
 log10p must be present as it will be used to plot the
 p-values on the y-axis.}
 
@@ -35,6 +35,10 @@ lines are drawn.}
 that should be plotted as a shaded rectangle in the backgroud.
 Typically used to highlight a region containing the highest p-values.
 If NULL (the default) or length is 0, then no plotting is done.}
+
+\item{threshold}{A numeric of length one used to plot a horizontal
+line showing the location of the p-value threshold. If \code{NULL}
+(the default), then no line is plotted for the threshold.}
 
 \item{yexpand}{A numeric of length 2 representing expansion factors
 of y-scale limits. The first value is the expansion factor to

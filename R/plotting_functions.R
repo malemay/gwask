@@ -61,7 +61,7 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 	gwas_results$manhattan_rpos <- (GenomicRanges::start(gwas_results) + GenomicRanges::end(gwas_results)) / 2 +
 		chrom_start[as.character(GenomicRanges::seqnames(gwas_results))]
 
-	# Computing whether the chromosome chromsome is even or odd (for plotting purposes)
+	# Computing whether the chromosome is even or odd (for plotting purposes)
 	even_chromosomes <- GenomeInfoDb::seqlevels(gwas_results)[c(FALSE, TRUE)]
 	gwas_results$manhattan_even <- as.character(GenomicRanges::seqnames(gwas_results)) %in% even_chromosomes
 
@@ -366,9 +366,8 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #' This function takes a data.frame of formatted GWAS results and returns
 #' a gTree object representing a p-value plot in a given interval.
 #'
-#' @param gwas_results A GRanges object or data.frame of GWAS results.
-#'   If a data.frame, must include the columns manhattan_chrom and
-#'   manhattan_cpos for coercion to a GRanges. The metadata column
+#' @param gwas_results A GRanges object of GWAS results.
+#'   The metadata column
 #'   log10p must be present as it will be used to plot the
 #'   p-values on the y-axis.
 #' @param interval A GRanges object used to subset the plotting to a given
@@ -377,6 +376,9 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #'  interest to mark with vertical dotted lines. Both the start and end of
 #'  the feature will be indicated with a line. If NULL (default), then no
 #'  lines are drawn.
+#' @param threshold A numeric of length one used to plot a horizontal
+#'  line showing the location of the p-value threshold. If \code{NULL}
+#'  (the default), then no line is plotted for the threshold.
 #' @param shading A GRanges object of length one indicating a region
 #'  that should be plotted as a shaded rectangle in the backgroud.
 #'  Typically used to highlight a region containing the highest p-values.
@@ -401,31 +403,18 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 #' @examples
 #' NULL
 pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
-		       yexpand = c(0, 0), merging_gap = 10^9,
+		       threshold = NULL, yexpand = c(0, 0), merging_gap = 10^9,
 		       cex.points = 0.5, col = "blue", pruned_col = NULL) {
-
-	if(!inherits(gwas_results, "GRanges")) {
-		gwas_results <- GenomicRanges::makeGRangesFromDataFrame(gwas_results,
-									keep.extra.columns = TRUE,
-									ignore.strand = TRUE,
-									seqnames.field = "manhattan_chrom",
-									start.field = "manhattan_cpos",
-									end.field = "manhattan_cpos")
-	}
 
 	# We keep only the part of the gwas_results that overlaps the interval
 	gwas_results <- IRanges::subsetByOverlaps(gwas_results, interval, ignore.strand = TRUE)
 
-	# Also adding a column with a numerical index into the signal that a marker belongs to (for coloring the points)
-	if(length(gwas_results)) {
-		overlaps <- IRanges::findOverlaps(gwas_results, interval)
-		gwas_results$signal <- 1
-		gwas_results[IRanges::from(overlaps)]$signal <- IRanges::to(overlaps)
-	}
-
 	# We also need to merge the ranges in interval so it can be used to set the x-scale for plotting
 	xrange <- GenomicRanges::reduce(interval, min.gapwidth = merging_gap, ignore.strand = TRUE)
 	stopifnot(length(xrange) == 1)
+
+	# Extracting the name of the chromosome from this object
+	chrom <- GenomicRanges::seqnames(xrange)
 
 	# Checking if the feature (if provided) overlaps the interval
 	if(!is.null(feature) && !overlapsAny(feature, xrange)) {
@@ -437,9 +426,9 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 	if(length(gwas_results)) {
 		# Setting the yscale interval
 		stopifnot(length(yexpand) == 2)
-		yrange <- max(gwas_results$log10p) - min(gwas_results$log10p)
-		yscale <- c(min(gwas_results$log10p) - yexpand[1] * yrange,
-			    max(gwas_results$log10p) + yexpand[2] * yrange)
+		yrange <- max(gwas_results$log10p, if(!is.null(threshold)) threshold else 0)
+		yscale <- c(0 - yexpand[1] * yrange,
+			    max(gwas_results$log10p, if(!is.null(threshold)) threshold else 0) + yexpand[2] * yrange)
 		# If the y-scale interval is only one marker, we set its minimum to 0
 		if(yscale[1] == yscale[2]) yscale[1] <- 0
 	} else  {
@@ -456,8 +445,20 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 
 	# We plot a box around the viewport and an x-axis
 	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob())
-	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob())
-	output_gtree <- grid::addGrob(output_gtree, grid::textGrob("Position along reference (bp)", y = grid::unit(-3, "lines")))
+
+	axis_positions <- axisTicks(c(GenomicRanges::start(xrange), GenomicRanges::end(xrange)), log = FALSE, nint = 6)
+	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob(at = axis_positions, label = as.character(axis_positions / 10^6)))
+	output_gtree <- grid::addGrob(output_gtree, grid::textGrob(paste0("Position along ", chrom, " (Mb)"), y = grid::unit(-3, "lines")))
+
+	# An empty GWAS dataset over the range needs to be handled in a special way
+	if(!length(gwas_results)) {
+
+		warning("No GWAS data in interval")
+		output_gtree <- grid::addGrob(output_gtree, grid::textGrob("No GWAS data in selected range"))
+
+		# Returning from the function because the rest of the function should not be processed
+		return(output_gtree)
+	}
 
 	# Adding shading if provided
 	if(!is.null(shading) && length(shading)) {
@@ -470,6 +471,22 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 							     just = c(0, 0),
 							     gp = grid::gpar(fill = "black", alpha = 0.2)))
 	}
+
+	# Setting the color and order of the data points if there are pruned datapoints
+	if("pruned" %in% names(GenomicRanges::mcols(gwas_results)) && !is.null(pruned_col)) {
+		gwas_results$color <- ifelse(gwas_results$pruned, pruned_col, col)
+		gwas_results <- gwas_results[order(gwas_results$pruned, decreasing = TRUE), ]
+	} else {
+		gwas_results$color <- col
+	}
+
+	# Plotting the data points
+	output_gtree <- grid::addGrob(output_gtree,
+				      grid::pointsGrob(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
+						       y = grid::unit(gwas_results$log10p, "native"),
+						       pch = 20,
+						       gp = gpar(cex = cex.points,
+								 col = gwas_results$color)))
 
 	# Adding vertical lines with the location of the feature if provided
 	if(!is.null(feature)) {
@@ -486,30 +503,13 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 							      gp = grid::gpar(lty = 2)))
 	}
 
-	# An empty GWAS dataset over the range needs to be handled in a special way
-	if(!length(gwas_results)) {
-		warning("No GWAS data in interval")
-
-		# Plotting some very basic features
-		output_gtree <- grid::addGrob(output_gtree, grid::textGrob("No GWAS data in selected range"))
-
-		# Returning from the function because the rest of the function should not be processed
-		return(output_gtree)
+	# Adding a line with the location of the p-value threshold if provided
+	if(!is.null(threshold)) {
+		output_gtree <- grid::addGrob(output_gtree,
+					      grid::linesGrob(x = grid::unit(c(0, 1), "npc"),
+							      y = grid::unit(threshold, "native"),
+							      gp = grid::gpar(lty = "13")))
 	}
-
-	# Then we can plot the data points
-	if("pruned" %in% names(GenomicRanges::mcols(gwas_results)) && !is.null(pruned_col)) {
-		gwas_results$color <- ifelse(gwas_results$pruned, pruned_col, col)
-	} else {
-		gwas_results$color <- col
-	}
-
-	output_gtree <- grid::addGrob(output_gtree,
-				      grid::pointsGrob(x = grid::unit(GenomicRanges::start(gwas_results), "native"),
-						       y = grid::unit(gwas_results$log10p, "native"),
-						       pch = 20,
-						       gp = gpar(cex = cex.points,
-								 col = gwas_results$color)))
 
 	# Adding a y-axis
 	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob())
