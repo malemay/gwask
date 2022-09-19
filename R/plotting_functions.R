@@ -447,7 +447,9 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob())
 
 	axis_positions <- axisTicks(c(GenomicRanges::start(xrange), GenomicRanges::end(xrange)), log = FALSE, nint = 6)
-	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob(at = axis_positions, label = as.character(axis_positions / 10^6)))
+	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob(at = axis_positions,
+								    label = as.character(axis_positions / 10^6),
+								    name = "xaxis"))
 	output_gtree <- grid::addGrob(output_gtree, grid::textGrob(paste0("Position along ", chrom, " (Mb)"), y = grid::unit(-3, "lines")))
 
 	# An empty GWAS dataset over the range needs to be handled in a special way
@@ -562,8 +564,15 @@ pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
 							 ranges = IRanges::IRanges(start = xscale[1], end = xscale[2]))
 
 			# Editing the x-scales of the viewports underlying pvalue_grobs so they are plotted with update coordinates
+			# Also editing the x-axis so they are the same across panels
 			for(i in 1:length(pvalue_grobs)) {
-				if(!is.null(pvalue_grobs[[i]]$vp)) pvalue_grobs[[i]]$vp <- grid::editViewport(pvalue_grobs[[i]]$vp, xscale = xscale)
+				if(!is.null(pvalue_grobs[[i]]$vp)) {
+					pvalue_grobs[[i]]$vp <- grid::editViewport(pvalue_grobs[[i]]$vp, xscale = xscale)
+					axis_positions <- axisTicks(xscale, log = FALSE, nint = 6)
+					pvalue_grobs[[i]] <- grid::editGrob(pvalue_grobs[[i]], gPath = grid::gPath("xaxis"),
+									    at = axis_positions, 
+									    label = as.character(axis_positions / 10^6))
+				}
 			}
 
 		} else {	
