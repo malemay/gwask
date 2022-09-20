@@ -4,7 +4,15 @@
 \alias{transcriptsGrob}
 \title{Generate a grob of all the possible transcripts for genes in a genomic region using grid}
 \usage{
-transcriptsGrob(genes, transcripts, exons, cds, xscale, first_tx_only = FALSE)
+transcriptsGrob(
+  genes,
+  transcripts,
+  exons,
+  cds,
+  xscale,
+  highlight = NULL,
+  first_tx_only = FALSE
+)
 }
 \arguments{
 \item{genes}{A GRanges object containing the known genes for the
@@ -30,6 +38,10 @@ element being the name of the transcript.}
 \item{xscale}{A GRanges object used to set the limits of the x-axis
 and to subset the genes object such that only the ones located in the 
 interval are plotted.}
+
+\item{highlight}{A GRanges object indicating a region to highlight
+with a red-coloured rectangle to draw attention on a particular
+region. If \code{NULL} (the default), then no highlight is plotted.}
 
 \item{first_tx_only}{A logical. Whether to plot only the first transcript
 of a given gene (default: FALSE).}

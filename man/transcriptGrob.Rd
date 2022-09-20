@@ -4,7 +4,14 @@
 \alias{transcriptGrob}
 \title{Generate a grob representing a transcript using grid functions}
 \usage{
-transcriptGrob(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = NULL)
+transcriptGrob(
+  tx_gene,
+  tx_exons,
+  tx_cds,
+  highlight = NULL,
+  output_vp = NULL,
+  name = NULL
+)
 }
 \arguments{
 \item{tx_gene}{A GRanges object representing the coordinates of
@@ -12,6 +19,10 @@ of a single gene to which the transcript belongs.}
 
 \item{tx_exons}{A GRanges object representing the exons belonging
 to a single transcript.}
+
+\item{highlight}{A GRanges object indicating a region to highlight
+with a red-coloured rectangle to draw attention on a particular
+region. If \code{NULL} (the default), then no highlight is plotted.}
 
 \item{output_vp}{A viewport that the transcript should be plotted in.}
 

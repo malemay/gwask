@@ -10,7 +10,8 @@ grid.haplotypes(
   fontsize = 8,
   n_colors = 5,
   pal = "YlOrRd",
-  scale_extend = 2
+  scale_extend = 2,
+  position = NULL
 )
 }
 \arguments{
@@ -38,6 +39,11 @@ must correspond to a palette in the RColorBrewer package.}
 \item{scale_extend}{A numeric. The number of units (of -log10(p-value)) to extend
 the limits of the color scale by at both ends to make sure that extreme values
 are mapped onto the scale.}
+
+\item{position}{A character of length one indicating the chromosome and
+nucleotide position x scale, used for plotting the x-axis. This parameter
+must be specified as in samtools, using the format Chr:start-end. If NULL,
+then no x-axis is plotted.}
 }
 \value{
 \code{NULL}, invisibly. This function is invoked for its plotting

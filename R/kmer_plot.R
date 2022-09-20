@@ -570,6 +570,10 @@ nucdiff <- function(hapdata) {
 #'   represent sequence difference graphically. If \code{NULL} (the default),
 #'   then sequence differences are not represented graphically.
 #' @param fontsize The fontsize
+#' @param position A character of length one indicating the chromosome and
+#'   nucleotide position x scale, used for plotting the x-axis. This parameter
+#'   must be specified as in samtools, using the format Chr:start-end. If NULL,
+#'   then no x-axis is plotted.
 #' @inheritParams map_color
 #'
 #' @return \code{NULL}, invisibly. This function is invoked for its plotting
@@ -578,7 +582,9 @@ nucdiff <- function(hapdata) {
 #' @export
 #' @examples
 #' NULL
-grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8, n_colors = 5, pal = "YlOrRd", scale_extend = 2) {
+grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
+			    n_colors = 5, pal = "YlOrRd", scale_extend = 2,
+			    position = NULL) {
 
 	# Checking that all haplotypes have the same number of positions
 	if(!length(unique(sapply(hapdata, nrow))) == 1) {
@@ -600,14 +606,43 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8, n_colors = 5
 
 	hapdata$color <- map_color_output$mapped_colors
 
-	# Dividing the viewport into rows and columns
+	# Extracting informations for the x-axis (if applicable)
+	if(!is.null(position)) {
+		stopifnot(length(position) == 1 && is.character(position))
+		chrom <- sub(":.*", "", position)
+		stopifnot(nchar(chrom) > 0)
+
+		xscale <- sub(".*:", "", position)
+		xscale <- as.numeric(strsplit(xscale, "-")[[1]])
+	}
+
+	# Dividing the viewport in two parts:
+	# - The upper part will be used to plot the haplotypes
+	# - The middle part acts as a buffer between the upper and lower viewports
+	# - The lower part will be used to plot the color scale
+	# - Three columns are also used to leave some space off to the left and right of the plotting region
+	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 3,
+								     ncol = 3,
+								     widths = grid::unit(c(0.08, 0.84, 0.08), "null"),
+								     heights = grid::unit(c(0.5, 0.4, 0.1), "null"))))
+
+	# Further dividing the top viewport into rows and columns
 	# ----- Haplotype rows are interleaved with rows used to show sequence differences between consecutive haplotypes
-	# ----- The the last row is used to plot the color scale
-	# ----- Hence the number of rows being 2 * n_hap
+	# ----- Hence the number of rows being 2 * n_hap - 1
 	# ----- The number of columns is the maximum position across all haplotypes
-	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = n_hap * 2,
+	grid::pushViewport(grid::viewport(layout.pos.row = 1,
+					  layout.pos.col = 2,
+					  layout = grid::grid.layout(nrow = n_hap * 2 - 1,
 								     ncol = max(hapdata$pos),
-								     heights = grid::unit(rep(c(2, 1), n_hap), "null"))))
+								     heights = grid::unit(rep(c(2, 1), length.out = n_hap * 2 - 1), "null")),
+					  xscale = if(is.null(position)) c(0,1) else xscale))
+
+	# Adding the x-axis if applicable
+	if(!is.null(position)) {
+		grid::grid.xaxis()
+		grid.text(paste0("Position along ", chrom, " (bp)"),
+			  y = grid::unit(-3, "lines"))
+	}
 
 	# Iterating over the rows in hapdata to plot the nucleotides in the appropriate row and column
 	for(i in 1:nrow(hapdata)) {
@@ -640,8 +675,9 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8, n_colors = 5
 		}
 	}
 
-	# Finally plotting the color scale in the bottom row
-	grid::pushViewport(grid::viewport(layout.pos.row = 2 * n_hap))
+	# Finally plotting the color scale in the bottom viewport
+	grid::upViewport() # Back in the viewport that is divided in two rows
+	grid::pushViewport(grid::viewport(layout.pos.row = 3, layout.pos.col = 2))
 	grid.colorscale(breaks = map_color_output$breaks,
 			base_palette = map_color_output$base_palette)
 	grid::upViewport()

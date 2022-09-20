@@ -192,6 +192,9 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #'   of a single gene to which the transcript belongs.
 #' @param tx_exons A GRanges object representing the exons belonging
 #'   to a single transcript.
+#' @param highlight A GRanges object indicating a region to highlight
+#'   with a red-coloured rectangle to draw attention on a particular
+#'   region. If \code{NULL} (the default), then no highlight is plotted.
 #' @param tx_name A GRanges object representing the coding sequences
 #'   belonging to a single transcript.
 #' @param output_vp A viewport that the transcript should be plotted in.
@@ -202,7 +205,7 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #' @export
 #' @examples
 #' NULL
-transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = NULL) {
+transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL, output_vp = NULL, name = NULL) {
 
 	# Drawing the line that goes from start to end of the gene
 	tx_line <- grid::linesGrob(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
@@ -229,9 +232,23 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = N
 							       "orange")),
 				 name = "tx_cds")
 
+	# Adding the highlighted region if provided
+	if(!is.null(highlight)) {
+		highlight <- grid::rectGrob(x = grid::unit(GenomicRanges::start(highlight), "native"),
+					    y = grid::unit(0.5, "npc"),
+					    width = grid::unit(GenomicRanges::width(highlight), "native"),
+					    height = grid::unit(0.95, "npc"),
+					    hjust = 0,
+					    gp = grid::gpar(col = "red", fill = "transparent"),
+					    name = "tx_highlight")
+		gObjects <- gList(tx_line, tx_exons, tx_cds, highlight)
+	} else {
+		gObjects <- gList(tx_line, tx_exons, tx_cds)
+	}
+
 	return(gTree(name = name,
 		     cl = "txgrob",
-		     children = gList(tx_line, tx_exons, tx_cds),
+		     children = gObjects,
 		     vp = output_vp))
 }
 
@@ -282,6 +299,9 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = N
 #' @param xscale A GRanges object used to set the limits of the x-axis
 #'   and to subset the genes object such that only the ones located in the 
 #'   interval are plotted.
+#' @param highlight A GRanges object indicating a region to highlight
+#'   with a red-coloured rectangle to draw attention on a particular
+#'   region. If \code{NULL} (the default), then no highlight is plotted.
 #'
 #' @return A gTree with the proper viewports and grobs set for plotting all
 #'   transcripts in the provided genomic region.
@@ -289,7 +309,7 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, output_vp = NULL, name = N
 #' @export
 #' @examples
 #' NULL
-transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
+transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = NULL,
 			    first_tx_only = FALSE) {
 
 	# Checking that the inputs are of the right type
@@ -349,6 +369,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale,
 						      transcriptGrob(genes[gene_index],
 								     exons[[tx_name]],
 								     cds[[tx_name]],
+								     highlight = highlight,
 								     name = paste0("gene", gene_index, "_tx", i),
 								     output_vp = vpPath(paste0("tx", i))))
 		}
@@ -553,7 +574,7 @@ pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
 
 	# Setting xrange and xscale for plotting
 	if(is.null(xrange)) {
-		if(is.null(xchrom) || !(length(xchrom) == 1)) stop("xchrom must be set to generate the GRanges objcet for subsetting genes")
+		if(is.null(xchrom) || !(length(xchrom) == 1)) stop("xchrom must be set to generate the GRanges object for subsetting genes")
 
 		# Computing the	limits of the viewport from the limits of those in the pvalue grobs
 		vp_x <- unlist(lapply(pvalue_grobs, function(x) x$vp$xscale))
