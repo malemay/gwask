@@ -9,6 +9,7 @@ transcriptGrob(
   tx_exons,
   tx_cds,
   highlight = NULL,
+  draw_arrows = FALSE,
   output_vp = NULL,
   name = NULL
 )
@@ -23,6 +24,10 @@ to a single transcript.}
 \item{highlight}{A GRanges object indicating a region to highlight
 with a red-coloured rectangle to draw attention on a particular
 region. If \code{NULL} (the default), then no highlight is plotted.}
+
+\item{draw_arrows}{A logical indicating whether arrows should be drawn
+in the middle of condig sequence regions to indicate the direction
+of transcription.}
 
 \item{output_vp}{A viewport that the transcript should be plotted in.}
 

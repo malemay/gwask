@@ -12,6 +12,7 @@ pvalue_tx_grob(
   transcripts,
   exons,
   cds,
+  draw_arrows = FALSE,
   first_tx_only = FALSE,
   tx_fraction = 0.1,
   margins = c(5.1, 4.1, 4.1, 2.1)
@@ -49,6 +50,10 @@ element being the name of the transcript.}
 in the reference genome being used. Each element of the list contains
 the coding sequences for a particular transcript, with the name of the list
 element being the name of the transcript.}
+
+\item{draw_arrows}{A logical indicating whether arrows should be drawn
+in the middle of condig sequence regions to indicate the direction
+of transcription.}
 
 \item{first_tx_only}{A logical. Whether to plot only the first transcript
 of a given gene (default: FALSE).}

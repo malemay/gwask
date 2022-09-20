@@ -195,6 +195,9 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #' @param highlight A GRanges object indicating a region to highlight
 #'   with a red-coloured rectangle to draw attention on a particular
 #'   region. If \code{NULL} (the default), then no highlight is plotted.
+#' @param draw_arrows A logical indicating whether arrows should be drawn
+#'   in the middle of condig sequence regions to indicate the direction
+#'   of transcription.
 #' @param tx_name A GRanges object representing the coding sequences
 #'   belonging to a single transcript.
 #' @param output_vp A viewport that the transcript should be plotted in.
@@ -205,7 +208,8 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #' @export
 #' @examples
 #' NULL
-transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL, output_vp = NULL, name = NULL) {
+transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
+			   draw_arrows = FALSE, output_vp = NULL, name = NULL) {
 
 	# Drawing the line that goes from start to end of the gene
 	tx_line <- grid::linesGrob(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
@@ -222,15 +226,27 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL, output_v
 				   name = "tx_exons")
 
 	# Doing the same thing for the coding sequences by using a shaded color
-	tx_cds <- grid::rectGrob(x = grid::unit(GenomicRanges::start(tx_cds), "native"),
-				 y = grid::unit(0.5, "npc"),
-				 width = grid::unit(GenomicRanges::width(tx_cds), "native"),
-				 height = grid::unit(0.8, "npc"),
-				 hjust = 0,
-				 gp = grid::gpar(fill = ifelse(as.character(GenomicRanges::strand(tx_cds)) == "+",
-							       "skyblue", 
-							       "orange")),
-				 name = "tx_cds")
+	cds_grob <- grid::rectGrob(x = grid::unit(GenomicRanges::start(tx_cds), "native"),
+				   y = grid::unit(0.5, "npc"),
+				   width = grid::unit(GenomicRanges::width(tx_cds), "native"),
+				   height = grid::unit(0.8, "npc"),
+				   hjust = 0,
+				   gp = grid::gpar(fill = ifelse(as.character(GenomicRanges::strand(tx_cds)) == "+",
+								 "skyblue", 
+								 "orange")),
+				   name = "tx_cds")
+
+	# Drawing arrows with the direction of transcription (if draw_arrows is TRUE)
+	if(draw_arrows) {
+		mid_positions <- (GenomicRanges::start(tx_cds) + GenomicRanges::end(tx_cds)) / 2
+		tx_arrows <- grid::polylineGrob(x = grid::unit(rep(mid_positions, each = 2), "native"),
+						y = grid::unit(rep(0.5, length(mid_positions) * 2), "npc"),
+						id = rep(1:length(mid_positions), each = 2),
+						arrow = grid::arrow(angle = ifelse(GenomicRanges::strand(tx_cds) == "+", 150, 30),
+								    length = grid::unit(0.1, "npc"),
+								    type = "closed"),
+						gp = grid::gpar(fill = "black"))
+	}
 
 	# Adding the highlighted region if provided
 	if(!is.null(highlight)) {
@@ -241,9 +257,17 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL, output_v
 					    hjust = 0,
 					    gp = grid::gpar(col = "red", fill = "transparent"),
 					    name = "tx_highlight")
-		gObjects <- gList(tx_line, tx_exons, tx_cds, highlight)
+	}
+
+	# Preparing the list of objects for output
+	if(!is.null(highlight) && draw_arrows) {
+		gObjects <- grid::gList(tx_line, tx_exons, cds_grob, highlight, tx_arrows)
+	} else if(!is.null(highlight)) {
+		gObjects <- grid::gList(tx_line, tx_exons, cds_grob, highlight)
+	} else if(draw_arrows) {
+		gObjects <- grid::gList(tx_line, tx_exons, cds_grob, tx_arrows)
 	} else {
-		gObjects <- gList(tx_line, tx_exons, tx_cds)
+		gObjects <- grid::gList(tx_line, tx_exons, cds_grob)
 	}
 
 	return(gTree(name = name,
@@ -302,6 +326,9 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL, output_v
 #' @param highlight A GRanges object indicating a region to highlight
 #'   with a red-coloured rectangle to draw attention on a particular
 #'   region. If \code{NULL} (the default), then no highlight is plotted.
+#' @param draw_arrows A logical indicating whether arrows should be drawn
+#'   in the middle of condig sequence regions to indicate the direction
+#'   of transcription.
 #'
 #' @return A gTree with the proper viewports and grobs set for plotting all
 #'   transcripts in the provided genomic region.
@@ -310,7 +337,7 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL, output_v
 #' @examples
 #' NULL
 transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = NULL,
-			    first_tx_only = FALSE) {
+			    first_tx_only = FALSE, draw_arrows = FALSE) {
 
 	# Checking that the inputs are of the right type
 	stopifnot(inherits(genes, "GRanges"))
@@ -370,6 +397,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = 
 								     exons[[tx_name]],
 								     cds[[tx_name]],
 								     highlight = highlight,
+								     draw_arrows = draw_arrows,
 								     name = paste0("gene", gene_index, "_tx", i),
 								     output_vp = vpPath(paste0("tx", i))))
 		}
@@ -558,6 +586,9 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 #'   the GRanges object to use for subsetting genes to be set.
 #' @param tx_fraction A numeric value between 0 and 1 representing the
 #'   proportion of the plot reserved for plotting the transcript(s).
+#' @param draw_arrows A logical indicating whether arrows should be drawn
+#'   in the middle of condig sequence regions to indicate the direction
+#'   of transcription.
 #' @param margins The margins used for the plotting viewport. Default value
 #'   is c(5.1, 4.1, 4.1, 2.1) (the default for \code{\link[grid]{plotViewport}})
 #'
@@ -568,7 +599,7 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 #' @examples
 #' NULL
 pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
-			   genes, transcripts, exons, cds,
+			   genes, transcripts, exons, cds, draw_arrows = FALSE,
 			   first_tx_only = FALSE, tx_fraction = 0.1,
 			   margins = c(5.1, 4.1, 4.1, 2.1)) {
 
@@ -627,6 +658,7 @@ pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
 		# Plotting the transcripts in the top viewport
 		tx_gtree <- grid::gTree(children = grid::gList(transcriptsGrob(genes, transcripts, exons, cds,
 									       first_tx_only = first_tx_only,
+									       draw_arrows = draw_arrows,
 									       xscale = xrange)),
 					vp = grid::vpPath("row_1", "plotting_region"))
 

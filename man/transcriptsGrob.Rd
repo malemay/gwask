@@ -11,7 +11,8 @@ transcriptsGrob(
   cds,
   xscale,
   highlight = NULL,
-  first_tx_only = FALSE
+  first_tx_only = FALSE,
+  draw_arrows = FALSE
 )
 }
 \arguments{
@@ -45,6 +46,10 @@ region. If \code{NULL} (the default), then no highlight is plotted.}
 
 \item{first_tx_only}{A logical. Whether to plot only the first transcript
 of a given gene (default: FALSE).}
+
+\item{draw_arrows}{A logical indicating whether arrows should be drawn
+in the middle of condig sequence regions to indicate the direction
+of transcription.}
 }
 \value{
 A gTree with the proper viewports and grobs set for plotting all
