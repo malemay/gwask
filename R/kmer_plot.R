@@ -136,9 +136,43 @@ get_haplotypes <- function(sequences, min_frequency) {
 	# Keeping only haplotypes that occur at least min_frequency times
 	haplotypes <- haplotypes[haplotypes >= min_frequency]
 
-	# We return the sequences themselves instead of the table
-	haplotypes <- names(haplotypes)
+	# Sorting the haplotypes by decreasing order of frequency before the clustering them
+	haplotypes <- sort(haplotypes, decreasing = TRUE)
+	haplotypes <- names(haplotypes) # We no longer care about the frequency, only about the sequence
+
+	if(length(haplotypes) > 2) {
+		haplotypes <- cluster_haplotypes(haplotypes)	
+	}
+
+	# We return the (possibly clustered) sequences
 	return(haplotypes)
+}
+
+#' Cluster the most similar haplotypes together
+#'
+#' This function takes a character vector of strings and uses a
+#' greedy clustering algorithm based on distance between strings
+#' to cluster them together.
+#'
+#' @param sequences A character vector of sequences to cluster.
+#'
+#' @return A character vector with the same values as the input
+#'   vector, but reordered to reflect similarity between strings.
+#'
+#' @examples
+#' NULL
+cluster_haplotypes <- function(sequences) {
+	to_cluster <- sequences[-1]
+	clustered <- sequences[1]
+
+	while(length(to_cluster) > 0) {
+		sdist <- adist(clustered[length(clustered)], to_cluster)
+		c_index <- which.min(sdist)
+		clustered <- c(clustered, to_cluster[c_index])
+		to_cluster <- to_cluster[-c_index]
+	}
+
+	clustered
 }
 
 #' Link haplotypes to their observed phenotypes
@@ -392,6 +426,10 @@ mafft_align <- function(fasta_path, sequences, mafft_path, mafft_options = "") {
 	# The output of mafft is read directly into an R variable
 	mafft_command <- paste0(mafft_path, " ", mafft_options, " ", fasta_path)
 	alignment <- system(mafft_command, intern = TRUE)
+
+	# Sanity check that mafft has not re-ordered the sequences
+	alignment_num <- regmatches(alignment, regexpr("[0-9]+", alignment))
+	stopifnot(all(diff(as.numeric(alignment_num)) == 1))
 
 	# Formatting the alignment for output
 	alignment <- strsplit(paste0(alignment, collapse = ""), split = ">seq[0-9]+")[[1]]
@@ -722,12 +760,15 @@ grid.phenotable <- function(phenodata) {
 
 	# Printing the IDs of the phenotypes
 	for(i in 1:ncol(phenotable)) {
-		grid::grid.text(colnames(phenotable)[i], vp = grid::viewport(layout.pos.row = 1, layout.pos.col = i + 1))
+		grid::grid.text(paste0("Hap ", colnames(phenotable)[i]), vp = grid::viewport(layout.pos.row = 1, layout.pos.col = i + 1))
 	}
 
 	# Printing the phenotype values themselves
 	for(i in 1:nrow(phenotable)) {
-		grid::grid.text(rownames(phenotable)[i], vp = grid::viewport(layout.pos.row = i + 1, layout.pos.col = 1))
+		grid::grid.text(rownames(phenotable)[i],
+				x = grid::unit(0.1, "npc"),
+				hjust = 0,
+				vp = grid::viewport(layout.pos.row = i + 1, layout.pos.col = 1))
 	}
 
 	# Printing the counts
@@ -736,6 +777,19 @@ grid.phenotable <- function(phenodata) {
 			grid::grid.text(as.character(phenotable[i, j]),
 					vp = grid::viewport(layout.pos.row = i + 1, layout.pos.col = j + 1))
 		}
+	}
+
+	# Adding some lines to make the contingency table more interesting to look at
+	for(i in 1:ncol(phenotable)) {
+		grid::grid.lines(x = grid::unit(c(0, 0), "npc"),
+				 y = grid::unit(c(0, 1), "npc"),
+				 vp = grid::viewport(layout.pos.col = i + 1))
+	}
+
+	for(i in 1:nrow(phenotable)) {
+		grid::grid.lines(x = grid::unit(c(0, 1), "npc"),
+				 y = grid::unit(c(1, 1), "npc"),
+				 vp = grid::viewport(layout.pos.row = i + 1))
 	}
 
 	# Returning to the top viewport

@@ -403,10 +403,6 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = 
 		}
 	}
 
-	# Adding a rectGrob and xaxisGrob to the gTree in order to visualize the limits of the viewport
-	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob(gp = gpar(fill = NA)))
-	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob(vp = paste0("tx", nrows)))
-
 	return(output_gtree)
 }
 
