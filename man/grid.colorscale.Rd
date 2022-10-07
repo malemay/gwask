@@ -4,7 +4,14 @@
 \alias{grid.colorscale}
 \title{Plot the color scale used in a haplotype plot}
 \usage{
-grid.colorscale(breaks, base_palette)
+grid.colorscale(
+  breaks,
+  base_palette,
+  label_text,
+  round_digits = 2,
+  direction = "horizontal",
+  fontsize = 12
+)
 }
 \arguments{
 \item{breaks}{A numeric vector of breaks used for the color scale.
@@ -12,6 +19,18 @@ There must be one more break than the number of colors}
 
 \item{base_palette}{A character vector of colors used in mapping
 the numeric values onto the color scale.}
+
+\item{label_text}{A character to use as a value for the axis label.}
+
+\item{direction}{A character indicating whether the direction in
+which the color scale should be plotted. Supported values are
+"horizontal" and "vertical".}
+
+\item{fontsize}{A numeric. The font size to use for the axis label
+and tick labels.}
+
+\item{digits}{A numeric value indicating the number of digits
+that the breaks in the scale should be rounded to.}
 }
 \value{
 \code{NULL}, invisibly. This function is invoked for its

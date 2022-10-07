@@ -4,7 +4,7 @@
 \alias{map_color}
 \title{Map a set of numeric values onto a color palette}
 \usage{
-map_color(values, pal, n_colors, scale_extend)
+map_color(values, pal, n_colors, scale_extend, n_colors_remove = 0)
 }
 \arguments{
 \item{values}{A numeric vector of values to be mapped on the color scale.
@@ -15,13 +15,16 @@ must correspond to a palette in the RColorBrewer package.}
 
 \item{n_colors}{A numeric. The number of colors to use for the mapping p-values
 onto a color scale. The maximum value allowed may differ depending on the
-particular palette used. Currently, the maximum number allowed is always
-2 below the maximum accepted by RColorBrewer for a given palette because
-paler colors are stripped from the base palette provided.}
+particular palette used. This represents the number of colors in the base
+palette prior to applying the n_colors_remove option.}
 
 \item{scale_extend}{A numeric. The number of units (of -log10(p-value)) to extend
 the limits of the color scale by at both ends to make sure that extreme values
 are mapped onto the scale.}
+
+\item{n_colors_remove}{A numeric. The number of colors to remove from the beginning
+of the color scale, to remove paler hues. If this option is used, the length of the
+final palette will be n_colors - n_colors_remove.}
 }
 \value{
 A list of length three comprising the following elements:

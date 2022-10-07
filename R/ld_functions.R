@@ -210,13 +210,25 @@ gg_color_hue <- function(n) {
 #'   a 'log10p' columns containing the -log10(p-value) associated with each k-mer.
 #'   All k-mers represented in the ld_matrix object must also be presented within
 #'   kmer_positions.
+#' @param top_legend A logical. Whether or not to plot the color scale for the
+#'   chromosomes at the top of the plot. Defaults to TRUE.
+#' @param ylabels A logical. If TRUE, labels are printed on the y-axis at the mid-position
+#'   for each reference sequence to identify them in the plot. Setting this option to
+#'   TRUE only makes sense when k-mers are sorted by genomic position, therefore it is
+#'   FALSE by default.
+#' @param ylabel_pattern A regular expression to use to keep only the labels matching
+#'   that pattern. This option is only relevant if ylabels is set to TRUE.
 #'
 #' @return \code{NULL}, invisibly. This function is invoked for its plotting side effect.
 #'
 #' @export
 #' @examples
 #' NULL
-ld_plot <- function(ld_matrix, kmer_positions) {
+ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALSE,
+		    ylabel_pattern = NULL) {
+
+	# Debug
+	grid.rect()
 
 	# Checking the validity of the ld_matrix input
 	stopifnot(is_valid_ld(ld_matrix))
@@ -232,9 +244,9 @@ ld_plot <- function(ld_matrix, kmer_positions) {
 	}
 
 	# Map the numeric values onto a color scale
-	color_scale <- RColorBrewer::brewer.pal(9, "YlOrRd")
-	color_values <- color_scale[as.integer(cut(ld_matrix, breaks = 9))]
-	color_values <- matrix(color_values, nrow = nrow(ld_matrix))
+	color_scale <- map_color(values = ld_matrix, pal = "YlOrRd",
+				 n_colors = 9, scale_extend = 0, n_colors_remove = 0)
+	color_values <- matrix(color_scale$mapped_colors, nrow = nrow(ld_matrix))
 
 	# Also preparing a vector of colors to show the chromosome that a k-mer belongs to
 	kmer_chrom <- as.character(GenomicRanges::seqnames(kmer_positions[rownames(ld_matrix)]))
@@ -249,11 +261,18 @@ ld_plot <- function(ld_matrix, kmer_positions) {
 
 	# Doing the same thing by mapping the p-values on a blue color-scale on the x-axis
 	kmer_pvalues  <- kmer_positions[colnames(ld_matrix)]$log10p
-	pvalue_scale  <- RColorBrewer::brewer.pal(9, "Blues")
-	pvalue_colors <- pvalue_scale[as.integer(cut(kmer_pvalues, breaks = 9))]
+	pvalue_scale  <- map_color(values = kmer_pvalues, pal = "Blues",
+				   n_colors = 9, scale_extend = 0, n_colors_remove = 0)
+	pvalue_colors <- pvalue_scale$mapped_colors
+
+	# Creating a viewport layout suitable for out plotting purposes
+	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 3,
+								     ncol = 3,
+								     widths = grid::unit(c(1, 0.8, 1), c("null", "npc", "null")),
+								     heights = grid::unit(c(1, 0.8, 1), c("null", "npc", "null")))))
 
 	# Push a viewport with suitable coordinates for positioning the rectangles to plot
-	grid::pushViewport(grid::viewport(height = 0.9, width = 0.9,
+	grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 2,
 					  xscale = c(1, ncol(ld_matrix) + 1),
 					  yscale = c(1, nrow(ld_matrix) + 1)))
 
@@ -271,36 +290,101 @@ ld_plot <- function(ld_matrix, kmer_positions) {
 			gp = grid::gpar(col = "transparent", fill = plotting_data$color))
 
 	# Adding colored lines to the left side of the plot indicating the chromosome on which a k-mer is found
+	# We go to the left viewport for that
+	grid::upViewport()
+	grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 1,
+					  yscale = c(1, nrow(ld_matrix) + 1)))
+
 	grid::grid.rect(y = 1:length(kmer_color),
-			x = grid::unit(-0.04, "npc"),
+			x = grid::unit(0.95, "npc"),
 			height = 1,
-			width = grid::unit(0.03, "npc"),
+			width = grid::unit(0.5, "npc"),
 			default.units = "native",
-			just = c(0,0),
+			just = c(1,0),
 			gp = grid::gpar(col = "transparent", fill = kmer_color))
 
+	# Optionally adding y-axis labels for the reference sequence
+	if(ylabels) {
+		for(i in legend_text) {
+			if(!is.null(ylabel_pattern) && !grepl(ylabel_pattern, i)) next
+			ypos <- which(kmer_chrom == i)
+			median_pos <- median(ypos)
+			min_pos <- min(ypos)
+
+			# Adding the label
+			grid::grid.text(i,
+					x = grid::unit(0.43, "npc"),
+					y = grid::unit(median_pos, "native"),
+					just = "right",
+					gp = grid::gpar(fontsize = 6))
+
+			# Adding a horizontal line to separate neighouring chromosomes
+			grid::grid.lines(x = grid::unit(c(0.45, 0.95), "npc"),
+					 y = grid::unit(min_pos, "native"),
+					 gp = grid::gpar(lwd = 0.5))
+		}
+	}
+
+
 	# Adding colored lines to below the plot indicating the -log10(p-value) of the k-mer
-	grid::grid.rect(y = grid::unit(-0.04, "npc"),
+	# We go to the botton viewport for that
+	grid::upViewport()
+	grid::pushViewport(grid::viewport(layout.pos.row = 3, layout.pos.col = 2,
+					  xscale = c(1, ncol(ld_matrix) + 1)))
+	grid::grid.rect(y = grid::unit(0.95, "npc"),
 			x = 1:length(pvalue_colors),
-			height = grid::unit(0.03, "npc"),
+			height = grid::unit(0.5, "npc"),
 			width = 1,
 			default.units = "native",
-			just = c(0,0),
+			just = c(0,1),
 			gp = grid::gpar(col = "transparent", fill = pvalue_colors))
 
-	# Going back up one viewport to plot the color legend for the chromosomes
-	grid::upViewport()
-	grid::pushViewport(grid::viewport(width = 0.9, height = 0.05, y = 0.95, just = "bottom",
-					  layout = grid::grid.layout(nrow = 1, ncol = length(legend_color))))
+	# Optionally going to the top viewport to plot the color legend for the chromosomes
+	if(top_legend) {
+		grid::upViewport()
+		grid::pushViewport(grid::viewport(layout.pos.row = 1, layout.pos.col = 2,
+						  layout = grid::grid.layout(nrow = 1, ncol = length(legend_color))))
 
-	for(i in 1:length(legend_color)) {
-		grid::grid.rect(x = 0, width = 0.3, height = 0.3, just = "left",
-				gp = grid::gpar(col = "transparent", fill = legend_color[i]),
-				vp = grid::viewport(layout.pos.col = i))
-		grid::grid.text(names(legend_color)[i], x = 0.4, just = "left",
-				gp = grid::gpar(fontsize = 6),
-				vp = grid::viewport(layout.pos.col = i))
+		for(i in 1:length(legend_color)) {
+			grid::grid.rect(x = 0, width = 0.3, height = 0.3, just = "left",
+					gp = grid::gpar(col = "transparent", fill = legend_color[i]),
+					vp = grid::viewport(layout.pos.col = i))
+			grid::grid.text(names(legend_color)[i], x = 0.4, just = "left",
+					gp = grid::gpar(fontsize = 6),
+					vp = grid::viewport(layout.pos.col = i))
+		}
 	}
+
+	grid::upViewport()
+
+	# Plotting the color scale for the LD values in the right viewport (top half)
+	grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 3))
+	grid::pushViewport(grid::viewport(x = 0, y = 0.5, height = 0.5, width = 0.5, just = c(0, 0)))
+
+	grid.colorscale(breaks = color_scale$breaks,
+			base_palette = color_scale$base_palette,
+			label_text = "LD (r^2)",
+			round_digits = 2,
+			direction = "vertical",
+			fontsize = 8)
+
+	grid::upViewport()
+
+	# Doing the same thing for the p-value scale in the lower half of the right viewport
+	grid::pushViewport(grid::viewport(x = 0, y = 0, height = 0.5, width = 0.5, just = c(0, 0)))
+
+	grid.colorscale(breaks = pvalue_scale$breaks,
+			base_palette = pvalue_scale$base_palette,
+			label_text = "-log10(p-value)",
+			round_digits = 0,
+			direction = "vertical",
+			fontsize = 8)
+
+	# Going back up to the layout viewport
+	grid::upViewport()
+
+	# And then to the top viewport
+	grid::upViewport()
 
 	invisible(NULL)
 }

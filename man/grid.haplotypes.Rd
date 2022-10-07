@@ -29,9 +29,8 @@ then sequence differences are not represented graphically.}
 
 \item{n_colors}{A numeric. The number of colors to use for the mapping p-values
 onto a color scale. The maximum value allowed may differ depending on the
-particular palette used. Currently, the maximum number allowed is always
-2 below the maximum accepted by RColorBrewer for a given palette because
-paler colors are stripped from the base palette provided.}
+particular palette used. This represents the number of colors in the base
+palette prior to applying the n_colors_remove option.}
 
 \item{pal}{A character. The palette to use for to -log10(p-values) color scale.
 must correspond to a palette in the RColorBrewer package.}

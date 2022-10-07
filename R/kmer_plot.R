@@ -639,8 +639,9 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 	# Mapping the -log10(pvalues) onto a color scale
 	map_color_output <- map_color(values = hapdata$log10p,
 				      pal = pal,
-				      n_colors = n_colors,
-				      scale_extend = scale_extend)
+				      n_colors = n_colors + 2,
+				      scale_extend = scale_extend,
+				      n_colors_remove = 2)
 
 	hapdata$color <- map_color_output$mapped_colors
 
@@ -717,7 +718,10 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 	grid::upViewport() # Back in the viewport that is divided in two rows
 	grid::pushViewport(grid::viewport(layout.pos.row = 3, layout.pos.col = 2))
 	grid.colorscale(breaks = map_color_output$breaks,
-			base_palette = map_color_output$base_palette)
+			base_palette = map_color_output$base_palette,
+			label_text = "-log10(p-value)",
+			round_digits = 0,
+			direction = "horizontal")
 	grid::upViewport()
 
 	# Moving back into the top viewport
@@ -808,14 +812,16 @@ grid.phenotable <- function(phenodata) {
 #'   \code{NA} values are accepted and mapped to the "black" color.
 #' @param n_colors A numeric. The number of colors to use for the mapping p-values
 #'   onto a color scale. The maximum value allowed may differ depending on the
-#'   particular palette used. Currently, the maximum number allowed is always
-#'   2 below the maximum accepted by RColorBrewer for a given palette because
-#'   paler colors are stripped from the base palette provided.
+#'   particular palette used. This represents the number of colors in the base
+#'   palette prior to applying the n_colors_remove option.
 #' @param pal A character. The palette to use for to -log10(p-values) color scale.
 #'   must correspond to a palette in the RColorBrewer package.
 #' @param scale_extend A numeric. The number of units (of -log10(p-value)) to extend
 #'   the limits of the color scale by at both ends to make sure that extreme values
 #'   are mapped onto the scale.
+#' @param n_colors_remove A numeric. The number of colors to remove from the beginning
+#'   of the color scale, to remove paler hues. If this option is used, the length of the
+#'   final palette will be n_colors - n_colors_remove.
 #'
 #' @return A list of length three comprising the following elements:
 #'   \itemize{
@@ -826,10 +832,12 @@ grid.phenotable <- function(phenodata) {
 #'
 #' @examples
 #' NULL
-map_color <- function(values, pal, n_colors, scale_extend) {
-	# Getting the base palette with n_colors + 2 colors, because
-	# we want to get rid of the very pale colors
-	base_palette <- RColorBrewer::brewer.pal(n = n_colors + 2, name = pal)[-c(1, 2)]
+map_color <- function(values, pal, n_colors, scale_extend, n_colors_remove = 0) {
+	base_palette <- RColorBrewer::brewer.pal(n = n_colors, name = pal)
+	if(n_colors_remove > 0) {
+		base_palette <- base_palette[-(1:n_colors_remove)]
+		n_colors <- length(base_palette)
+	}
 
 	# Getting the breaks based on the minimum/maximum values and the scale_extend parameter
 	breaks <- seq(min(values, na.rm = TRUE) - scale_extend,
@@ -837,7 +845,7 @@ map_color <- function(values, pal, n_colors, scale_extend) {
 		      length.out = n_colors + 1) 
 
 	# A vector of colors to use for plotting; NA values are changed to black
-	mapped_colors <- base_palette[as.integer(cut(values, breaks = breaks))]
+	mapped_colors <- base_palette[as.integer(cut(values, breaks = breaks, include.lowest = TRUE))]
 	mapped_colors[is.na(mapped_colors)] <- "black"
 
 	# We return a list with the mapped values, color levels and base palette colors
@@ -858,18 +866,34 @@ map_color <- function(values, pal, n_colors, scale_extend) {
 #'   There must be one more break than the number of colors
 #' @param base_palette A character vector of colors used in mapping
 #'   the numeric values onto the color scale.
+#' @param label_text A character to use as a value for the axis label.
+#' @param digits A numeric value indicating the number of digits
+#'   that the breaks in the scale should be rounded to.
+#' @param direction A character indicating whether the direction in
+#'   which the color scale should be plotted. Supported values are
+#'   "horizontal" and "vertical".
+#' @param fontsize A numeric. The font size to use for the axis label
+#'   and tick labels.
 #'
 #' @return \code{NULL}, invisibly. This function is invoked for its
 #'   plotting side-effects.
 #'
 #' @examples
 #' NULL
-grid.colorscale <- function(breaks, base_palette) {
+grid.colorscale <- function(breaks, base_palette, label_text, round_digits = 2,
+			    direction = "horizontal", fontsize = 12) {
 
 	# Checking that the number of breaks is one more than the number of colors
 	if(length(breaks) != length(base_palette) + 1) {
 		stop("Error in grid.colorscale(): length(breaks) should be equal to length(base_palette) + 1")
 	}
+
+	# Checking the value of direction
+	if(!direction %in% c("horizontal", "vertical")) {
+		stop("Error in grid.colorscale: direction must be one of 'horizontal' or 'vertical'")
+	}
+
+	horiz <- direction == "horizontal"
 
 	# Getting the x-scale from the minimum and maximum values of the break labels
 	xscale <- range(breaks)
@@ -877,22 +901,41 @@ grid.colorscale <- function(breaks, base_palette) {
 	# Pushing a viewport with the appropriate scale
 	grid::pushViewport(grid::viewport(width = 0.5,
 					  height = 0.5,
-					  xscale = xscale))
+					  xscale = xscale,
+					  yscale = xscale))
 
 	# Draw the scale colors as rectangles
-	grid::grid.rect(x = breaks[-length(breaks)],
-			width = diff(breaks),
-			y = grid::unit(0, "npc"),
-			height = grid::unit(1, "npc"),
+	grid::grid.rect(x = if(horiz) breaks[-length(breaks)] else grid::unit(0, "npc"),
+			width = if(horiz) diff(breaks) else grid::unit(1, "npc"),
+			y = if(horiz) grid::unit(0, "npc") else breaks[-length(breaks)],
+			height = if(horiz) grid::unit(1, "npc") else diff(breaks),
 			default.units = "native",
 			just = c(0, 0),
 			gp = grid::gpar(fill = base_palette))
 
 	# Adding the breaks for the scale
-	grid::grid.xaxis(at = breaks, label = as.character(round(breaks)))
+	if(horiz) {
+		grid::grid.xaxis(at = breaks,
+				 label = as.character(round(breaks, digits = round_digits)),
+				 gp = grid::gpar(fontsize = fontsize))
+	} else {
+		grid::grid.yaxis(at = breaks,
+				 label = as.character(round(breaks, digits = round_digits)),
+				 gp = grid::gpar(fontsize = fontsize),
+				 main = FALSE)
+	}
 
 	# Adding a name for the scale
-	grid::grid.text("-log10(p-value)", y = grid::unit(-3, "lines"))
+	if(horiz) {
+		grid::grid.text(label_text,
+				y = grid::unit(-3, "lines"),
+				gp = grid::gpar(fontsize = fontsize))
+	} else {
+		grid::grid.text(label_text,
+				x = grid::unit(5, "lines"),
+				gp = grid::gpar(fontsize = fontsize),
+				rot = 90)
+	}
 
 	grid::upViewport()
 

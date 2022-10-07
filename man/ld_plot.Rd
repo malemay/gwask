@@ -4,7 +4,13 @@
 \alias{ld_plot}
 \title{Plot an LD matrix using grid functions}
 \usage{
-ld_plot(ld_matrix, kmer_positions)
+ld_plot(
+  ld_matrix,
+  kmer_positions,
+  top_legend = TRUE,
+  ylabels = FALSE,
+  ylabel_pattern = NULL
+)
 }
 \arguments{
 \item{ld_matrix}{A matrix of pairwise linkage disequilibrium values observed
@@ -15,6 +21,17 @@ p-values associated with a set of significant k-mers. Must contain
 a 'log10p' columns containing the -log10(p-value) associated with each k-mer.
 All k-mers represented in the ld_matrix object must also be presented within
 kmer_positions.}
+
+\item{top_legend}{A logical. Whether or not to plot the color scale for the
+chromosomes at the top of the plot. Defaults to TRUE.}
+
+\item{ylabels}{A logical. If TRUE, labels are printed on the y-axis at the mid-position
+for each reference sequence to identify them in the plot. Setting this option to
+TRUE only makes sense when k-mers are sorted by genomic position, therefore it is
+FALSE by default.}
+
+\item{ylabel_pattern}{A regular expression to use to keep only the labels matching
+that pattern. This option is only relevant if ylabels is set to TRUE.}
 }
 \value{
 \code{NULL}, invisibly. This function is invoked for its plotting side effect.
