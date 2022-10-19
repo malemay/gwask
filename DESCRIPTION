@@ -1,4 +1,4 @@
-Package: gwastools
+Package: gwask
 Type: Package
 Title: Utilities to work with GWAS results from GAPIT and k-mers GWAS
 Version: 0.1
