@@ -14,8 +14,16 @@
 #'   for this trait. When provided, this colors the labels of the reference signals
 #'   that were found in green, and those that were not found in red. Supplying
 #'   new_signals without supplying ref_signals throws an error.
+#' @param label_offset A numeric value indicating the offset of the signal labels
+#'   in base pairs relative to the location of the signal itself. Used to add
+#'   signal labels without overlapping the dotted line itself.
+#' @param label_hjust A numeric value indicating the hjust parameter for the
+#'   signal labels. Should be set according to the value used for label_offset.
 #' @param numeric_chrom Logical. Whether chromosome names should be stripped from
 #'   their alphabetical component and converted to numeric values (default: FALSE).
+#' @param point_colors A vector of length two whose values can be interpreted as colors.
+#'   the first value is used for the color of odd-numbered chromsomes, and the second
+#'   value for even-numbered chromosomes.
 #' @param yexpand A numeric of length two. A fractional value relative to the
 #'   range of the y-axis used to expand the y-scale on either side. The first
 #'   value is the expansion factor at the bottom of the scale, and the second
@@ -32,8 +40,9 @@
 #' @examples
 #' NULL
 manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
-			  ref_signals = NULL, new_signals = NULL,
-			  numeric_chrom = FALSE,
+			  ref_signals = NULL, new_signals = NULL, label_offset = 10^7,
+			  label_hjust = 0,
+			  numeric_chrom = FALSE, point_colors = c("blue", "red"),
 			  yexpand = c(0.03, 0.08), xexpand = c(0.03, 0.03),
 			  cex.points = 0.5, cex.lab = 1,
 			  margins = c(5.1, 4.1, 4.1, 2.1)) {
@@ -75,8 +84,10 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 	if(!is.null(ref_signals)) {
 		ref_signals$manhattan_rpos <- (GenomicRanges::start(ref_signals) + GenomicRanges::end(ref_signals)) / 2 +
 			chrom_start[as.character(GenomicRanges::seqnames(ref_signals))]
-		# Also rescaling the p-values to npc coordinates between 0.2 and 0.8 for plotting
-		ref_signals$pvalue_rescaled <- ref_signals$log_pvalue / max(ref_signals$log_pvalue) * 0.6 + 0.2
+
+		# Alternating the y-positions where the signal labels are plotted so they do not overlap
+		ref_signals <- sort(ref_signals, ignore.strand = TRUE)
+		ref_signals$ypos <- rep_len(c(0.5, 0.64, 0.78, 0.92), length(ref_signals))
 
 		# Setting the color of the labels if the ref_signals were found, or black if no new_signals provided
 		if(!is.null(new_signals)) {
@@ -123,7 +134,7 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 					      grid::pointsGrob(x = gwas_results$manhattan_rpos,
 							       y = gwas_results$log10p,
 							       pch = 20,
-							       gp = grid::gpar(cex = cex.points, col = ifelse(gwas_results$manhattan_even, "red", "blue")),
+							       gp = grid::gpar(cex = cex.points, col = ifelse(gwas_results$manhattan_even, point_colors[2], point_colors[1])),
 							       name = "manhattan_points"))
 	}
 
@@ -141,7 +152,7 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob(gp = grid::gpar(cex = cex.lab), name = "manhattan_yaxis"))
 
 	# Adding the x-axis label
-	output_gtree <- grid::addGrob(output_gtree, grid::textGrob("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90, name = "manhattan_ylabel"))
+	output_gtree <- grid::addGrob(output_gtree, grid::textGrob(expression(-log[10](italic(p))), x = grid::unit(-3, "lines"), rot = 90, name = "manhattan_ylabel"))
 
 	# Also adding the threshold if not NULL
 	if(!is.null(threshold)) {
@@ -163,9 +174,9 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 
 			output_gtree <- grid::addGrob(output_gtree,
 						      grid::textGrob(label = ref_signals[i]$locus,
-								     x = grid::unit(ref_signals[i]$manhattan_rpos, "native"),
-								     y = ref_signals[i]$pvalue_rescaled, hjust = 0.1,
-								     gp = grid::gpar(col = ref_signals[i]$labcol),
+								     x = grid::unit(ref_signals[i]$manhattan_rpos + label_offset, "native"),
+								     y = ref_signals[i]$ypos, hjust = label_hjust,
+								     gp = grid::gpar(col = ref_signals[i]$labcol, fontface = "bold.italic"),
 								     name = paste0("manhattan_siglabel_", i)))
 		}
 	}
@@ -202,6 +213,10 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #'   belonging to a single transcript.
 #' @param output_vp A viewport that the transcript should be plotted in.
 #' @param name The name of the returned gTree object.
+#' @param strand_colors A vector of length 2 whose values can be interpreted
+#'   as colors. The first color will be used to color exons in genes that
+#'   are transcribed on the + strand, and the second for genes that are
+#'   transcribed on the - strand.
 #'
 #' @return A gTree object representing a single transcript.
 #'
@@ -209,7 +224,8 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #' @examples
 #' NULL
 transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
-			   draw_arrows = FALSE, output_vp = NULL, name = NULL) {
+			   draw_arrows = FALSE, output_vp = NULL, name = NULL,
+			   strand_colors = c("skyblue", "orange")) {
 
 	# Drawing the line that goes from start to end of the gene
 	tx_line <- grid::linesGrob(x = grid::unit(c(GenomicRanges::start(tx_gene), GenomicRanges::end(tx_gene)), "native"),
@@ -231,9 +247,10 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
 				   width = grid::unit(GenomicRanges::width(tx_cds), "native"),
 				   height = grid::unit(0.8, "npc"),
 				   hjust = 0,
-				   gp = grid::gpar(fill = ifelse(as.character(GenomicRanges::strand(tx_cds)) == "+",
-								 "skyblue", 
-								 "orange")),
+				   gp = grid::gpar(color = "transparent",
+						   fill = ifelse(as.character(GenomicRanges::strand(tx_cds)) == "+",
+								 strand_colors[1],
+								 strand_colors[2])),
 				   name = "tx_cds")
 
 	# Drawing arrows with the direction of transcription (if draw_arrows is TRUE)
@@ -329,6 +346,10 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
 #' @param draw_arrows A logical indicating whether arrows should be drawn
 #'   in the middle of condig sequence regions to indicate the direction
 #'   of transcription.
+#' @param strand_colors A vector of length 2 whose values can be interpreted
+#'   as colors. The first color will be used to color exons in genes that
+#'   are transcribed on the + strand, and the second for genes that are
+#'   transcribed on the - strand.
 #'
 #' @return A gTree with the proper viewports and grobs set for plotting all
 #'   transcripts in the provided genomic region.
@@ -337,7 +358,7 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
 #' @examples
 #' NULL
 transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = NULL,
-			    first_tx_only = FALSE, draw_arrows = FALSE) {
+			    first_tx_only = FALSE, draw_arrows = FALSE, strand_colors = c("skyblue", "orange")) {
 
 	# Checking that the inputs are of the right type
 	stopifnot(inherits(genes, "GRanges"))
@@ -398,6 +419,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = 
 								     cds[[tx_name]],
 								     highlight = highlight,
 								     draw_arrows = draw_arrows,
+								     strand_colors = strand_colors,
 								     name = paste0("gene", gene_index, "_tx", i),
 								     output_vp = vpPath(paste0("tx", i))))
 		}
@@ -501,7 +523,7 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 	if(!length(gwas_results)) {
 
 		warning("No GWAS data in interval")
-		output_gtree <- grid::addGrob(output_gtree, grid::textGrob("No GWAS data in selected range"))
+		output_gtree <- grid::addGrob(output_gtree, grid::textGrob("No GWAS data over this range"))
 
 		# Returning from the function because the rest of the function should not be processed
 		return(output_gtree)
@@ -563,7 +585,7 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 
 	# Adding the axis labels
 	output_gtree <- grid::addGrob(output_gtree,
-				      grid::textGrob("-log10(p-value)", x = grid::unit(-3, "lines"), rot = 90))
+				      grid::textGrob(expression(-log[10](italic(p))), x = grid::unit(-3, "lines"), rot = 90))
 
 	return(output_gtree)
 }
@@ -596,7 +618,7 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 #' NULL
 pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
 			   genes, transcripts, exons, cds, draw_arrows = FALSE,
-			   first_tx_only = FALSE, tx_fraction = 0.1,
+			   first_tx_only = FALSE, tx_fraction = 0.1, strand_colors = c("skyblue", "orange"),
 			   margins = c(5.1, 4.1, 4.1, 2.1)) {
 
 	# Setting xrange and xscale for plotting
@@ -640,7 +662,7 @@ pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
 	# Creating all the row viewports
 	sub_viewports <- lapply(1:nrows, function(x) grid::vpStack(grid::viewport(layout.pos.row = x,
 										  name = paste0("row_", x)),
-								   grid::plotViewport(margins = if(x != 1) margins else c(0, margins[2], 0, margins[4]),
+								   grid::plotViewport(margins = if(x != 1) margins else c(0, margins[2], 0.7, margins[4]),
 										      name = "plotting_region")))
 
 	# Creating the output gTree object with the main viewport and childrenvp set
@@ -655,6 +677,7 @@ pvalue_tx_grob <- function(pvalue_grobs, xrange = NULL, xchrom = NULL,
 		tx_gtree <- grid::gTree(children = grid::gList(transcriptsGrob(genes, transcripts, exons, cds,
 									       first_tx_only = first_tx_only,
 									       draw_arrows = draw_arrows,
+									       strand_colors = strand_colors,
 									       xscale = xrange)),
 					vp = grid::vpPath("row_1", "plotting_region"))
 

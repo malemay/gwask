@@ -11,7 +11,8 @@ transcriptGrob(
   highlight = NULL,
   draw_arrows = FALSE,
   output_vp = NULL,
-  name = NULL
+  name = NULL,
+  strand_colors = c("skyblue", "orange")
 )
 }
 \arguments{
@@ -32,6 +33,11 @@ of transcription.}
 \item{output_vp}{A viewport that the transcript should be plotted in.}
 
 \item{name}{The name of the returned gTree object.}
+
+\item{strand_colors}{A vector of length 2 whose values can be interpreted
+as colors. The first color will be used to color exons in genes that
+are transcribed on the + strand, and the second for genes that are
+transcribed on the - strand.}
 
 \item{tx_name}{A GRanges object representing the coding sequences
 belonging to a single transcript.}

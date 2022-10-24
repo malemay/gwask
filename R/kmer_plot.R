@@ -719,7 +719,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 	grid::pushViewport(grid::viewport(layout.pos.row = 3, layout.pos.col = 2))
 	grid.colorscale(breaks = map_color_output$breaks,
 			base_palette = map_color_output$base_palette,
-			label_text = "-log10(p-value)",
+			label_text = expression(-log[10](italic(p))),
 			round_digits = 0,
 			direction = "horizontal")
 	grid::upViewport()

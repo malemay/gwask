@@ -15,6 +15,7 @@ pvalue_tx_grob(
   draw_arrows = FALSE,
   first_tx_only = FALSE,
   tx_fraction = 0.1,
+  strand_colors = c("skyblue", "orange"),
   margins = c(5.1, 4.1, 4.1, 2.1)
 )
 }
@@ -60,6 +61,11 @@ of a given gene (default: FALSE).}
 
 \item{tx_fraction}{A numeric value between 0 and 1 representing the
 proportion of the plot reserved for plotting the transcript(s).}
+
+\item{strand_colors}{A vector of length 2 whose values can be interpreted
+as colors. The first color will be used to color exons in genes that
+are transcribed on the + strand, and the second for genes that are
+transcribed on the - strand.}
 
 \item{margins}{The margins used for the plotting viewport. Default value
 is c(5.1, 4.1, 4.1, 2.1) (the default for \code{\link[grid]{plotViewport}})}

@@ -218,6 +218,7 @@ gg_color_hue <- function(n) {
 #'   FALSE by default.
 #' @param ylabel_pattern A regular expression to use to keep only the labels matching
 #'   that pattern. This option is only relevant if ylabels is set to TRUE.
+#' @param fontsize A numeric. The font size to use for the y-labels and color scales.
 #'
 #' @return \code{NULL}, invisibly. This function is invoked for its plotting side effect.
 #'
@@ -225,10 +226,7 @@ gg_color_hue <- function(n) {
 #' @examples
 #' NULL
 ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALSE,
-		    ylabel_pattern = NULL) {
-
-	# Debug
-	grid.rect()
+		    ylabel_pattern = NULL, fontsize = 8) {
 
 	# Checking the validity of the ld_matrix input
 	stopifnot(is_valid_ld(ld_matrix))
@@ -268,8 +266,8 @@ ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALS
 	# Creating a viewport layout suitable for out plotting purposes
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 3,
 								     ncol = 3,
-								     widths = grid::unit(c(1, 0.8, 1), c("null", "npc", "null")),
-								     heights = grid::unit(c(1, 0.8, 1), c("null", "npc", "null")))))
+								     widths = grid::unit(c(1, 0.75, 1), c("null", "npc", "null")),
+								     heights = grid::unit(c(1, 0.75, 1), c("null", "npc", "null")))))
 
 	# Push a viewport with suitable coordinates for positioning the rectangles to plot
 	grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 2,
@@ -313,10 +311,10 @@ ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALS
 
 			# Adding the label
 			grid::grid.text(i,
-					x = grid::unit(0.43, "npc"),
+					x = grid::unit(0.38, "npc"),
 					y = grid::unit(median_pos, "native"),
 					just = "right",
-					gp = grid::gpar(fontsize = 6))
+					gp = grid::gpar(fontsize = fontsize))
 
 			# Adding a horizontal line to separate neighouring chromosomes
 			grid::grid.lines(x = grid::unit(c(0.45, 0.95), "npc"),
@@ -350,7 +348,7 @@ ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALS
 					gp = grid::gpar(col = "transparent", fill = legend_color[i]),
 					vp = grid::viewport(layout.pos.col = i))
 			grid::grid.text(names(legend_color)[i], x = 0.4, just = "left",
-					gp = grid::gpar(fontsize = 6),
+					gp = grid::gpar(fontsize = fontsize),
 					vp = grid::viewport(layout.pos.col = i))
 		}
 	}
@@ -363,10 +361,10 @@ ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALS
 
 	grid.colorscale(breaks = color_scale$breaks,
 			base_palette = color_scale$base_palette,
-			label_text = "LD (r^2)",
+			label_text = expression(LD (r^2)),
 			round_digits = 2,
 			direction = "vertical",
-			fontsize = 8)
+			fontsize = fontsize)
 
 	grid::upViewport()
 
@@ -375,10 +373,10 @@ ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALS
 
 	grid.colorscale(breaks = pvalue_scale$breaks,
 			base_palette = pvalue_scale$base_palette,
-			label_text = "-log10(p-value)",
+			label_text = expression(-log[10](italic(p))),
 			round_digits = 0,
 			direction = "vertical",
-			fontsize = 8)
+			fontsize = fontsize)
 
 	# Going back up to the layout viewport
 	grid::upViewport()

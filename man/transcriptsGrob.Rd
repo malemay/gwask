@@ -12,7 +12,8 @@ transcriptsGrob(
   xscale,
   highlight = NULL,
   first_tx_only = FALSE,
-  draw_arrows = FALSE
+  draw_arrows = FALSE,
+  strand_colors = c("skyblue", "orange")
 )
 }
 \arguments{
@@ -50,6 +51,11 @@ of a given gene (default: FALSE).}
 \item{draw_arrows}{A logical indicating whether arrows should be drawn
 in the middle of condig sequence regions to indicate the direction
 of transcription.}
+
+\item{strand_colors}{A vector of length 2 whose values can be interpreted
+as colors. The first color will be used to color exons in genes that
+are transcribed on the + strand, and the second for genes that are
+transcribed on the - strand.}
 }
 \value{
 A gTree with the proper viewports and grobs set for plotting all

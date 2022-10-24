@@ -9,7 +9,8 @@ ld_plot(
   kmer_positions,
   top_legend = TRUE,
   ylabels = FALSE,
-  ylabel_pattern = NULL
+  ylabel_pattern = NULL,
+  fontsize = 8
 )
 }
 \arguments{
@@ -32,6 +33,8 @@ FALSE by default.}
 
 \item{ylabel_pattern}{A regular expression to use to keep only the labels matching
 that pattern. This option is only relevant if ylabels is set to TRUE.}
+
+\item{fontsize}{A numeric. The font size to use for the y-labels and color scales.}
 }
 \value{
 \code{NULL}, invisibly. This function is invoked for its plotting side effect.

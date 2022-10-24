@@ -10,7 +10,10 @@ manhattanGrob(
   min_log10p = 0,
   ref_signals = NULL,
   new_signals = NULL,
+  label_offset = 10^7,
+  label_hjust = 0,
   numeric_chrom = FALSE,
+  point_colors = c("blue", "red"),
   yexpand = c(0.03, 0.08),
   xexpand = c(0.03, 0.03),
   cex.points = 0.5,
@@ -38,8 +41,19 @@ for this trait. When provided, this colors the labels of the reference signals
 that were found in green, and those that were not found in red. Supplying
 new_signals without supplying ref_signals throws an error.}
 
+\item{label_offset}{A numeric value indicating the offset of the signal labels
+in base pairs relative to the location of the signal itself. Used to add
+signal labels without overlapping the dotted line itself.}
+
+\item{label_hjust}{A numeric value indicating the hjust parameter for the
+signal labels. Should be set according to the value used for label_offset.}
+
 \item{numeric_chrom}{Logical. Whether chromosome names should be stripped from
 their alphabetical component and converted to numeric values (default: FALSE).}
+
+\item{point_colors}{A vector of length two whose values can be interpreted as colors.
+the first value is used for the color of odd-numbered chromsomes, and the second
+value for even-numbered chromosomes.}
 
 \item{yexpand}{A numeric of length two. A fractional value relative to the
 range of the y-axis used to expand the y-scale on either side. The first
