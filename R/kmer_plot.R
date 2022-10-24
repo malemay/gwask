@@ -607,7 +607,7 @@ nucdiff <- function(hapdata) {
 #'   of this list must be length(hapdata) - 1. This argument is used to
 #'   represent sequence difference graphically. If \code{NULL} (the default),
 #'   then sequence differences are not represented graphically.
-#' @param fontsize The fontsize
+#' @param fontsize The font size
 #' @param position A character of length one indicating the chromosome and
 #'   nucleotide position x scale, used for plotting the x-axis. This parameter
 #'   must be specified as in samtools, using the format Chr:start-end. If NULL,
@@ -655,14 +655,14 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 		xscale <- as.numeric(strsplit(xscale, "-")[[1]])
 	}
 
-	# Dividing the viewport in two parts:
-	# - The upper part will be used to plot the haplotypes
+	# Dividing the viewport in 9 sub-viewports in a 3x3 layout parts:
+	# - The upper part will be used to plot the color scale
 	# - The middle part acts as a buffer between the upper and lower viewports
-	# - The lower part will be used to plot the color scale
+	# - The lower part will be used to plot the haplotype sequences
 	# - Three columns are also used to leave some space off to the left and right of the plotting region
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = 3,
 								     ncol = 3,
-								     widths = grid::unit(c(0.08, 0.84, 0.08), "null"),
+								     widths = grid::unit(c(5, 0.86, 1), c("null", "npc", "null")),
 								     heights = grid::unit(c(0.5, 0.4, 0.1), "null"))))
 
 	# Further dividing the top viewport into rows and columns
@@ -674,7 +674,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 					  layout = grid::grid.layout(nrow = n_hap * 2 - 1,
 								     ncol = max(hapdata$pos),
 								     heights = grid::unit(rep(c(2, 1), length.out = n_hap * 2 - 1), "null")),
-					  xscale = if(is.null(position)) c(0,1) else xscale))
+					  xscale = if(is.null(position)) c(0, 1) else xscale))
 
 	# Adding the x-axis if applicable
 	if(!is.null(position)) {
@@ -692,6 +692,15 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 						col = hapdata[i, "color"]),
 				vp = grid::viewport(layout.pos.row = hapdata[i, "hapnum"] * 2 - 1,
 						    layout.pos.col = hapdata[i, "pos"]))
+	}
+
+	# Adding haplotype labels in the left margin
+	for(i in 1:n_hap) {
+		grid::grid.text(paste0("Hap ", i),
+				x = grid::unit(-0.02, "npc"),
+				hjust = 1,
+				vp = grid::viewport(layout.pos.row = i * 2 - 1))
+
 	}
 
 	# Also plotting the positions where the nucleotides differ (if difflist is provided)
@@ -714,7 +723,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 		}
 	}
 
-	# Finally plotting the color scale in the bottom viewport
+	# Finally plotting the color scale in the top viewport
 	grid::upViewport() # Back in the viewport that is divided in two rows
 	grid::pushViewport(grid::viewport(layout.pos.row = 3, layout.pos.col = 2))
 	grid.colorscale(breaks = map_color_output$breaks,
@@ -760,7 +769,9 @@ grid.phenotable <- function(phenodata) {
 
 	# Creating a viewport with the required cells to print the data
 	grid::pushViewport(grid::viewport(layout = grid::grid.layout(nrow = nrow(phenotable) + 1,
-								     ncol = ncol(phenotable) + 1)))
+								     ncol = ncol(phenotable) + 1,
+								     widths =  grid::unit(c(0.2, rep(1, ncol(phenotable))), c("npc", rep("null", ncol(phenotable)))),
+								     heights = grid::unit(c(0.2, rep(1, nrow(phenotable))), c("npc", rep("null", nrow(phenotable)))))))
 
 	# Printing the IDs of the phenotypes
 	for(i in 1:ncol(phenotable)) {

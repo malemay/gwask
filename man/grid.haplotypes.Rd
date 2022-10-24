@@ -25,7 +25,7 @@ of this list must be length(hapdata) - 1. This argument is used to
 represent sequence difference graphically. If \code{NULL} (the default),
 then sequence differences are not represented graphically.}
 
-\item{fontsize}{The fontsize}
+\item{fontsize}{The font size}
 
 \item{n_colors}{A numeric. The number of colors to use for the mapping p-values
 onto a color scale. The maximum value allowed may differ depending on the
