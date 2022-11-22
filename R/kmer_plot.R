@@ -688,7 +688,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 		grid::grid.text(hapdata[i, "nuc"],
 				gp = grid::gpar(fontsize = fontsize,
 						fontfamily = "mono",
-						fontface = ifelse(!is.na(hapdata[i, "log10p"]), "bold", "plain"),
+						fontface = "bold",
 						col = hapdata[i, "color"]),
 				vp = grid::viewport(layout.pos.row = hapdata[i, "hapnum"] * 2 - 1,
 						    layout.pos.col = hapdata[i, "pos"]))

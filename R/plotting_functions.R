@@ -511,13 +511,13 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 	output_gtree <- grid::gTree(name = "pvalueGrob", vp = pvalue_viewport, cl = "pvalue")
 
 	# We plot a box around the viewport and an x-axis
-	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob())
+	output_gtree <- grid::addGrob(output_gtree, grid::rectGrob(name = "pvalue_box"))
 
 	axis_positions <- axisTicks(c(GenomicRanges::start(xrange), GenomicRanges::end(xrange)), log = FALSE, nint = 6)
 	output_gtree <- grid::addGrob(output_gtree, grid::xaxisGrob(at = axis_positions,
 								    label = as.character(axis_positions / 10^6),
 								    name = "xaxis"))
-	output_gtree <- grid::addGrob(output_gtree, grid::textGrob(paste0("Position along ", chrom, " (Mb)"), y = grid::unit(-3, "lines")))
+	output_gtree <- grid::addGrob(output_gtree, grid::textGrob(paste0("Position along ", chrom, " (Mb)"), y = grid::unit(-3, "lines"), name = "pvalue_xlabel"))
 
 	# An empty GWAS dataset over the range needs to be handled in a special way
 	if(!length(gwas_results)) {
@@ -538,7 +538,8 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 							     y = grid::unit(0, "npc"),
 							     height = grid::unit(1, "npc"),
 							     just = c(0, 0),
-							     gp = grid::gpar(fill = "black", alpha = 0.2)))
+							     gp = grid::gpar(fill = "black", alpha = 0.2),
+							     name = "pvalue_shading"))
 	}
 
 	# Setting the color and order of the data points if there are pruned datapoints
@@ -555,7 +556,8 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 						       y = grid::unit(gwas_results$log10p, "native"),
 						       pch = 20,
 						       gp = gpar(cex = cex.points,
-								 col = gwas_results$color)))
+								 col = gwas_results$color),
+						       name = "pvalue_points"))
 
 	# Adding vertical lines with the location of the feature if provided
 	if(!is.null(feature)) {
@@ -563,13 +565,15 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 					      grid::linesGrob(x = GenomicRanges::start(feature),
 							      y = grid::unit(c(0, 1), "npc"),
 							      default.units = "native",
-							      gp = grid::gpar(lty = 2)))
+							      gp = grid::gpar(lty = 2),
+							      name = "pvalue_feature_start"))
 
 		output_gtree <- grid::addGrob(output_gtree,
 					      grid::linesGrob(x = GenomicRanges::end(feature),
 							      y = grid::unit(c(0, 1), "npc"),
 							      default.units = "native",
-							      gp = grid::gpar(lty = 2)))
+							      gp = grid::gpar(lty = 2),
+							      name = "pvalue_feature_end"))
 	}
 
 	# Adding a line with the location of the p-value threshold if provided
@@ -577,15 +581,17 @@ pvalueGrob <- function(gwas_results, interval, feature = NULL, shading = NULL,
 		output_gtree <- grid::addGrob(output_gtree,
 					      grid::linesGrob(x = grid::unit(c(0, 1), "npc"),
 							      y = grid::unit(threshold, "native"),
-							      gp = grid::gpar(lty = "13")))
+							      gp = grid::gpar(lty = "13"),
+							      name = "pvalue_threshold"))
 	}
 
 	# Adding a y-axis
-	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob())
+	output_gtree <- grid::addGrob(output_gtree, grid::yaxisGrob(name = "pvalue_yaxis"))
 
 	# Adding the axis labels
 	output_gtree <- grid::addGrob(output_gtree,
-				      grid::textGrob(expression(-log[10](italic(p))), x = grid::unit(-3, "lines"), rot = 90))
+				      grid::textGrob(expression(-log[10](italic(p))), x = grid::unit(-3, "lines"), rot = 90,
+						     name = "pvalue_ylabel"))
 
 	return(output_gtree)
 }
