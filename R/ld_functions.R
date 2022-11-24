@@ -374,7 +374,7 @@ ld_plot <- function(ld_matrix, kmer_positions, top_legend = TRUE, ylabels = FALS
 	grid.colorscale(breaks = pvalue_scale$breaks,
 			base_palette = pvalue_scale$base_palette,
 			label_text = expression(-log[10](italic(p))),
-			round_digits = 0,
+			round_digits = 1,
 			direction = "vertical",
 			fontsize = fontsize)
 
