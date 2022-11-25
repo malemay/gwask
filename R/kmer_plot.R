@@ -729,7 +729,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 	grid.colorscale(breaks = map_color_output$breaks,
 			base_palette = map_color_output$base_palette,
 			label_text = expression(-log[10](italic(p))),
-			round_digits = 0,
+			round_digits = if(diff(range(map_color_output$breaks)) > 10) 0 else 1,
 			direction = "horizontal")
 	grid::upViewport()
 
