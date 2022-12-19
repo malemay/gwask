@@ -607,7 +607,8 @@ nucdiff <- function(hapdata) {
 #'   of this list must be length(hapdata) - 1. This argument is used to
 #'   represent sequence difference graphically. If \code{NULL} (the default),
 #'   then sequence differences are not represented graphically.
-#' @param fontsize The font size
+#' @param fontsize The font size of the nucleotides
+#' @param axis_fontsize The fontsize of the ohter elements (axes, labels) of the plot.
 #' @param position A character of length one indicating the chromosome and
 #'   nucleotide position x scale, used for plotting the x-axis. This parameter
 #'   must be specified as in samtools, using the format Chr:start-end. If NULL,
@@ -620,7 +621,7 @@ nucdiff <- function(hapdata) {
 #' @export
 #' @examples
 #' NULL
-grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
+grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8, axis_fontsize = 12,
 			    n_colors = 5, pal = "YlOrRd", scale_extend = 2,
 			    position = NULL) {
 
@@ -678,9 +679,10 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 
 	# Adding the x-axis if applicable
 	if(!is.null(position)) {
-		grid::grid.xaxis()
+		grid::grid.xaxis(gp = gpar(fontsize = axis_fontsize))
 		grid.text(paste0("Position along ", chrom, " (bp)"),
-			  y = grid::unit(-3, "lines"))
+			  y = grid::unit(-3, "lines"),
+			  gp = gpar(fontsize = axis_fontsize))
 	}
 
 	# Iterating over the rows in hapdata to plot the nucleotides in the appropriate row and column
@@ -699,6 +701,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 		grid::grid.text(paste0("Hap ", i),
 				x = grid::unit(-0.02, "npc"),
 				hjust = 1,
+				gp = gpar(fontsize = axis_fontsize),
 				vp = grid::viewport(layout.pos.row = i * 2 - 1))
 
 	}
@@ -730,6 +733,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8,
 			base_palette = map_color_output$base_palette,
 			label_text = expression(-log[10](italic(p))),
 			round_digits = if(diff(range(map_color_output$breaks)) > 10) 0 else 1,
+			fontsize = axis_fontsize,
 			direction = "horizontal")
 	grid::upViewport()
 

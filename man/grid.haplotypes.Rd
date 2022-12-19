@@ -8,6 +8,7 @@ grid.haplotypes(
   hapdata,
   difflist = NULL,
   fontsize = 8,
+  axis_fontsize = 12,
   n_colors = 5,
   pal = "YlOrRd",
   scale_extend = 2,
@@ -25,7 +26,9 @@ of this list must be length(hapdata) - 1. This argument is used to
 represent sequence difference graphically. If \code{NULL} (the default),
 then sequence differences are not represented graphically.}
 
-\item{fontsize}{The font size}
+\item{fontsize}{The font size of the nucleotides}
+
+\item{axis_fontsize}{The fontsize of the ohter elements (axes, labels) of the plot.}
 
 \item{n_colors}{A numeric. The number of colors to use for the mapping p-values
 onto a color scale. The maximum value allowed may differ depending on the
