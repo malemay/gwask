@@ -213,6 +213,7 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #'   belonging to a single transcript.
 #' @param output_vp A viewport that the transcript should be plotted in.
 #' @param name The name of the returned gTree object.
+#' @param highlight_lwd A numeric. The line width of the highlighted region.
 #' @param strand_colors A vector of length 2 whose values can be interpreted
 #'   as colors. The first color will be used to color exons in genes that
 #'   are transcribed on the + strand, and the second for genes that are
@@ -225,6 +226,7 @@ manhattanGrob <- function(gwas_results, threshold = NULL, min_log10p = 0,
 #' NULL
 transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
 			   draw_arrows = FALSE, output_vp = NULL, name = NULL,
+			   highlight_lwd = 1,
 			   strand_colors = c("skyblue", "orange")) {
 
 	# Drawing the line that goes from start to end of the gene
@@ -272,7 +274,7 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
 					    width = grid::unit(GenomicRanges::width(highlight), "native"),
 					    height = grid::unit(0.95, "npc"),
 					    hjust = 0,
-					    gp = grid::gpar(col = "red", fill = "transparent"),
+					    gp = grid::gpar(col = "red", fill = "transparent", lwd = highlight_lwd),
 					    name = "tx_highlight")
 	}
 
@@ -343,6 +345,7 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
 #' @param highlight A GRanges object indicating a region to highlight
 #'   with a red-coloured rectangle to draw attention on a particular
 #'   region. If \code{NULL} (the default), then no highlight is plotted.
+#' @param highlight_lwd A numeric. The line width of the highlight object.
 #' @param draw_arrows A logical indicating whether arrows should be drawn
 #'   in the middle of condig sequence regions to indicate the direction
 #'   of transcription.
@@ -357,7 +360,7 @@ transcriptGrob <- function(tx_gene, tx_exons, tx_cds, highlight = NULL,
 #' @export
 #' @examples
 #' NULL
-transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = NULL,
+transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = NULL, highlight_lwd = 1,
 			    first_tx_only = FALSE, draw_arrows = FALSE, strand_colors = c("skyblue", "orange")) {
 
 	# Checking that the inputs are of the right type
@@ -418,6 +421,7 @@ transcriptsGrob <- function(genes, transcripts, exons, cds, xscale, highlight = 
 								     exons[[tx_name]],
 								     cds[[tx_name]],
 								     highlight = highlight,
+								     highlight_lwd = highlight_lwd,
 								     draw_arrows = draw_arrows,
 								     strand_colors = strand_colors,
 								     name = paste0("gene", gene_index, "_tx", i),

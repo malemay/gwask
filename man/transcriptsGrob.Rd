@@ -11,6 +11,7 @@ transcriptsGrob(
   cds,
   xscale,
   highlight = NULL,
+  highlight_lwd = 1,
   first_tx_only = FALSE,
   draw_arrows = FALSE,
   strand_colors = c("skyblue", "orange")
@@ -44,6 +45,8 @@ interval are plotted.}
 \item{highlight}{A GRanges object indicating a region to highlight
 with a red-coloured rectangle to draw attention on a particular
 region. If \code{NULL} (the default), then no highlight is plotted.}
+
+\item{highlight_lwd}{A numeric. The line width of the highlight object.}
 
 \item{first_tx_only}{A logical. Whether to plot only the first transcript
 of a given gene (default: FALSE).}

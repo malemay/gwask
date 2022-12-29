@@ -12,6 +12,7 @@ transcriptGrob(
   draw_arrows = FALSE,
   output_vp = NULL,
   name = NULL,
+  highlight_lwd = 1,
   strand_colors = c("skyblue", "orange")
 )
 }
@@ -33,6 +34,8 @@ of transcription.}
 \item{output_vp}{A viewport that the transcript should be plotted in.}
 
 \item{name}{The name of the returned gTree object.}
+
+\item{highlight_lwd}{A numeric. The line width of the highlighted region.}
 
 \item{strand_colors}{A vector of length 2 whose values can be interpreted
 as colors. The first color will be used to color exons in genes that
