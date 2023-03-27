@@ -10,16 +10,16 @@ License: GPL-3
 Encoding: UTF-8
 LaztData: true
 Imports:
-	Biostrings
-	GAPIT3
-	GenomeInfoDb
-	GenomicRanges
-	grid
-	IRanges
-	MatrixGenerics
-	RColorBrewer
-	Rsamtools
-	S4Vectors
-	stringr
+	Biostrings,
+	GAPIT3,
+	GenomeInfoDb,
+	GenomicRanges,
+	grid,
+	IRanges,
+	MatrixGenerics,
+	RColorBrewer,
+	Rsamtools,
+	S4Vectors,
+	stringr,
 	VariantAnnotation
 RoxygenNote: 7.2.0
