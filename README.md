@@ -80,3 +80,9 @@ available functions can be found here:
 
 The reference to the `gwask` package will be uploaded shortly.
 
+# References
+
+Voichek, Y. and Weigel, D., 2020. Identifying genetic variants underlying
+phenotypic variation in plants without complete genomes. *Nature Genetics*,
+52(5), pp.534-540. <https://doi.org/10.1038/s41588-020-0612-7>
+
