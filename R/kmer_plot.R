@@ -721,6 +721,7 @@ grid.haplotypes <- function(hapdata, difflist = NULL, fontsize = 8, axis_fontsiz
 			for(j in difflist[[i]]) {
 				grid::grid.lines(x = 0.5,
 						 y = c(0, 1),
+						 gp = gpar(lty = "12"),
 						 vp = grid::viewport(layout.pos.row = i * 2, layout.pos.col = j))
 			}
 		}
