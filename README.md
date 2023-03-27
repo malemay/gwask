@@ -20,6 +20,13 @@ Some Bioconductor packages will need to be installed for this package to work:
 
 [GAPIT3](https://github.com/jiabowang/GAPIT) also needs to be installed.
 
+WARNING: The GAPIT3 package has recently changed its name to GAPIT, breaking
+compatibility with gwask. We have not tested the newly named package yet. Most
+users of the package will not need GAPIT functionality; in this case, simply
+remove the corresponding line from the DESCRIPTION file before installing. If
+you do need GAPIT compatibility, the recommended route at the moment is to
+install a version of GAPIT where it was still called GAPIT3.
+
 Other required packages should be pulled in automatically from CRAN.
 
 ## Installing the package
